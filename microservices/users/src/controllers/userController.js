@@ -1,127 +1,160 @@
-const User = require('../models/userModel');
-// Registrar un nuevo usuario
+const userService = require('../services/userService');
+
+/**
+ * Controller Layer: Maneja requests HTTP
+ * NO tiene lógica de negocio, solo delega al Service
+ */
+
+/**
+ * Registrar usuario
+ * POST /api/users/register
+ */
 exports.register = async (req, res) => {
   try {
-    const { email, password, name, role, restaurantName, address, phone } = req.body;
+    const userData = req.body;
     
-    // Validar que el role sea válido
-    if (!['restaurant', 'buyer'].includes(role)) {
-      return res.status(400).json({ error: 'El rol debe ser "restaurant" o "buyer"' });
-    }
-    
-    // Crear el usuario
-    const user = new User({
-      email,
-      password,
-      name,
-      role,
-      restaurantName,
-      address,
-      phone
-    });
-    
-    await user.save();
+    // El service se encarga de toda la lógica
+    const newUser = await userService.register(userData);
     
     res.status(201).json({
+      success: true,
       message: 'Usuario registrado exitosamente',
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        restaurantName: user.restaurantName
-      }
+      data: newUser
     });
   } catch (error) {
     console.error('Error al registrar usuario:', error);
-    res.status(500).json({ error: error.message });
+    
+    // Manejo de errores según el tipo
+    if (error.message === 'El email ya está registrado') {
+      return res.status(409).json({ success: false, error: error.message });
+    }
+    if (error.message.includes('rol')) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };
-// Login de usuario
+
+/**
+ * Login de usuario
+ * POST /api/users/login
+ */
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Buscar usuario por email
-    const user = await User.findOne({ email });
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
+    // Validaciones básicas
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email y contraseña son requeridos' 
+      });
     }
-    
-    // Verificar contraseña (en producción usar bcrypt)
-    if (user.password !== password) {
-      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
-    }
+
+    const user = await userService.login(email, password);
     
     res.json({
+      success: true,
       message: 'Login exitoso',
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        restaurantName: user.restaurantName,
-        address: user.address,
-        phone: user.phone
-      }
+      data: user
     });
   } catch (error) {
     console.error('Error al hacer login:', error);
-    res.status(500).json({ error: error.message });
+    
+    if (error.message === 'Email o contraseña incorrectos') {
+      return res.status(401).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };
-// Obtener todos los restaurantes (para que los compradores vean)
+
+/**
+ * Obtener todos los restaurantes
+ * GET /api/users/restaurants
+ */
 exports.getRestaurants = async (req, res) => {
   try {
-    const restaurants = await User.find({ role: 'restaurant' })
-      .select('-password'); // No retornar la contraseña
+    const restaurants = await userService.getAllRestaurants();
     
     res.json({
+      success: true,
       count: restaurants.length,
-      restaurants
+      data: restaurants
     });
   } catch (error) {
     console.error('Error al obtener restaurantes:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };
-// Obtener un usuario por ID
+
+/**
+ * Obtener usuario por ID
+ * GET /api/users/:id
+ */
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    
-    res.json({ user });
-  } catch (error) {
-    console.error('Error al obtener usuario:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-// Actualizar perfil de usuario
-exports.updateUser = async (req, res) => {
-  try {
-    const { name, restaurantName, address, phone } = req.body;
-    
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { name, restaurantName, address, phone },
-      { new: true, runValidators: true }
-    ).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
+    const user = await userService.getUserById(req.params.id);
     
     res.json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Error al obtener usuario:', error);
+    
+    if (error.message === 'Usuario no encontrado') {
+      return res.status(404).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+};
+
+/**
+ * Actualizar perfil de usuario
+ * PUT /api/users/:id
+ */
+exports.updateUser = async (req, res) => {
+  try {
+    const updatedUser = await userService.updateProfile(req.params.id, req.body);
+    
+    res.json({
+      success: true,
       message: 'Perfil actualizado exitosamente',
-      user
+      data: updatedUser
     });
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
-    res.status(500).json({ error: error.message });
+    
+    if (error.message === 'Usuario no encontrado') {
+      return res.status(404).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+};
+
+/**
+ * Eliminar usuario
+ * DELETE /api/users/:id
+ */
+exports.deleteUser = async (req, res) => {
+  try {
+    await userService.deleteUser(req.params.id);
+    
+    res.json({
+      success: true,
+      message: 'Usuario eliminado exitosamente'
+    });
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    
+    if (error.message === 'Usuario no encontrado') {
+      return res.status(404).json({ success: false, error: error.message });
+    }
+    
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };

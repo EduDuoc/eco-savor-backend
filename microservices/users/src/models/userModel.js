@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
@@ -35,11 +36,13 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-// El campo restaurantName es obligatorio si el rol es 'restaurant'
+
+// Validación: si es restaurante, debe tener nombre
 userSchema.pre('save', function(next) {
   if (this.role === 'restaurant' && !this.restaurantName) {
     throw new Error('El restaurante debe tener un nombre');
   }
   next();
 });
+
 module.exports = mongoose.model('User', userSchema);
