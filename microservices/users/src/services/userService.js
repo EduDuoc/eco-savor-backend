@@ -53,8 +53,9 @@ class UserService {
       throw new Error('Email o contraseña incorrectos');
     }
 
-    // Verificar contraseña (en producción usar bcrypt.compare)
-    if (user.password !== password) {
+    // Verificar contraseña con bcrypt
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
       throw new Error('Email o contraseña incorrectos');
     }
 

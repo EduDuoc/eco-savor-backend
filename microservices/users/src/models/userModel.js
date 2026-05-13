@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -37,12 +38,22 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Validación: si es restaurante, debe tener nombre
-userSchema.pre('save', function(next) {
-  if (this.role === 'restaurant' && !this.restaurantName) {
-    throw new Error('El restaurante debe tener un nombre');
+// Hashear password antes de guardar
+userSchema.pre('save', async function() {
+  // Solo hashear si el password fue modificado o es nuevo
+  if (!this.isModified('password')) return;
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  } catch (error) {
+    throw error;
   }
-  next();
 });
+
+// Método para comparar passwords
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model('User', userSchema);

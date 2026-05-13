@@ -1,0 +1,119 @@
+version: '3.9'
+
+services:
+
+  mongo:
+    image: mongo:7.0
+    container_name: ecosavor-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ecosaver
+      MONGO_INITDB_ROOT_PASSWORD: ecosaver_secret
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - ecosaver-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  users-service:
+    build:
+      context: ./microservices/users
+      dockerfile: Dockerfile
+    container_name: ecosaver-users
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      MONGO_URI: mongodb://ecosaver:ecosaver_secret@mongo:27017/ecosaver_users?authSource=admin
+      NODE_ENV: development
+    ports:
+      - "3001:3001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - ecosaver-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  catalog-service:
+    build:
+      context: ./microservices/catalog
+      dockerfile: Dockerfile
+    container_name: ecosaver-catalog
+    restart: unless-stopped
+    environment:
+      PORT: 3002
+      MONGO_URI: mongodb://ecosaver:ecosaver_secret@mongo:27017/ecosaver_catalog?authSource=admin
+      NODE_ENV: development
+    ports:
+      - "3002:3002"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - ecosaver-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  orders-service:
+    build:
+      context: ./microservices/orders
+      dockerfile: Dockerfile
+    container_name: ecosaver-orders
+    restart: unless-stopped
+    environment:
+      PORT: 3003
+      MONGO_URI: mongodb://ecosaver:ecosaver_secret@mongo:27017/ecosaver_orders?authSource=admin
+      NODE_ENV: development
+    ports:
+      - "3003:3003"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - ecosaver-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3003/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: ecosaver-gateway
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      USERS_SERVICE_URL: http://users-service:3001
+      CATALOG_SERVICE_URL: http://catalog-service:3002
+      ORDERS_SERVICE_URL: http://orders-service:3003
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - users-service
+      - catalog-service
+      - orders-service
+    networks:
+      - ecosaver-net
+
+volumes:
+  mongo-data:
+
+networks:
+  ecosaver-net:
+    driver: bridge

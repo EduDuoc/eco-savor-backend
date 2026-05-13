@@ -57,11 +57,11 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ restaurantId: 1, available: 1 });
 productSchema.index({ category: 1, available: 1 });
 
-productSchema.pre('save', function(next) {
+// Validación: el precio con descuento debe ser menor al precio original
+productSchema.pre('save', async function() {
   if (this.discountPrice >= this.price) {
     throw new Error('El precio con descuento debe ser menor al precio original');
   }
-  next();
 });
 
 module.exports = mongoose.model('Product', productSchema);
