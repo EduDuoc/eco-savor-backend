@@ -71,6 +71,34 @@ class ProductService {
     }
     return product;
   }
+
+  /**
+   * Descuento atómico de stock
+   * @param {string} id - ID del producto
+   * @param {number} quantity - Cantidad a descontar
+   * @returns {Promise} Producto actualizado
+   */
+  async deductStock(id, quantity) {
+    const product = await productRepository.deductStock(id, quantity);
+    if (!product) {
+      throw new Error('Stock insuficiente');
+    }
+    return product;
+  }
+
+  /**
+   * Restaurar stock
+   * @param {string} id - ID del producto
+   * @param {number} quantity - Cantidad a restaurar
+   * @returns {Promise} Producto actualizado
+   */
+  async restoreStock(id, quantity) {
+    const product = await productRepository.restoreStock(id, quantity);
+    if (!product) {
+      throw new Error('Producto no encontrado');
+    }
+    return product;
+  }
 }
 
 module.exports = new ProductService();

@@ -71,6 +71,51 @@ class ProductRepository {
       { new: true }
     );
   }
+
+  /**
+   * Descuento atómico de stock
+   * Usa findOneAndUpdate con condición $gte para evitar race conditions
+   * @param {string} id - ID del producto
+   * @param {number} quantity - Cantidad a descontar
+   * @returns {Promise} Producto actualizado o null si no hay stock suficiente
+   */
+  async deductStock(id, quantity) {
+    const result = await Product.findOneAndUpdate(
+      { 
+        _id: id, 
+        quantity: { $gte: quantity }  // Solo si hay stock suficiente
+      },
+      { 
+        $inc: { quantity: -quantity }  // Decrementar stock
+      },
+      { new: true }  // Retornar documento actualizado
+    );
+
+    // Si el stock llega a 0, marcar como no disponible
+    if (result && result.quantity === 0) {
+      await this.markAsUnavailable(id);
+    }
+
+    return result;
+  }
+
+  /**
+   * Restaurar stock (para rollback o cancelación)
+   * @param {string} id - ID del producto
+   * @param {number} quantity - Cantidad a restaurar
+   * @returns {Promise} Producto actualizado
+   */
+  async restoreStock(id, quantity) {
+    const result = await Product.findByIdAndUpdate(
+      id,
+      { 
+        $inc: { quantity: quantity },
+        available: true  // Asegurar que esté disponible
+      },
+      { new: true }
+    );
+    return result;
+  }
 }
 
 module.exports = new ProductRepository();

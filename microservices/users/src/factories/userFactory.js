@@ -42,10 +42,13 @@ class UserFactory {
    */
   createRestaurant(data) {
     const baseUser = this.createBaseUser(data);
+    // Nota: restaurantName es requerido para restaurantes. Si no existe, usamos name como fallback
+    // por seguridad defensiva, pero el frontend debería validarlo.
+    const restaurantName = data.restaurantName?.trim() || data.name.trim();
     return {
       ...baseUser,
       role: 'restaurant',
-      restaurantName: data.restaurantName.trim(),
+      restaurantName: restaurantName,
       address: data.address || undefined,
       phone: data.phone || undefined
     };

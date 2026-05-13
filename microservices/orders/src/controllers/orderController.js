@@ -7,12 +7,24 @@ const orderService = require('../services/orderService');
 /**
  * Crear nueva orden
  * POST /api/orders
+ * Requiere rol: buyer
  */
 exports.createOrder = async (req, res) => {
   try {
+    console.log('🛒 createOrder - Request recibido:', {
+      userId: req.user.sub,
+      itemsCount: req.body.items?.length || 0,
+      totalAmount: req.body.totalAmount
+    });
+    
+    // El userId viene del usuario autenticado
+    const userId = req.user.sub;
     const { orderType, scheduledTime, ...orderData } = req.body;
     
-    const newOrder = await orderService.create(orderData, orderType, scheduledTime);
+    console.log('🛒 createOrder - Llamando a orderService.create...');
+    const newOrder = await orderService.create(orderData, orderType, scheduledTime, userId);
+    
+    console.log('🛒 createOrder - Orden creada:', newOrder.id || newOrder._id);
     
     res.status(201).json({
       success: true,
@@ -20,10 +32,13 @@ exports.createOrder = async (req, res) => {
       data: newOrder
     });
   } catch (error) {
-    console.error('Error al crear orden:', error);
+    console.error('❌ Error al crear orden:', error);
     
     if (error.message.includes('productos') || error.message.includes('restaurante') || error.message.includes('hora')) {
       return res.status(400).json({ success: false, error: error.message });
+    }
+    if (error.message.includes('Stock')) {
+      return res.status(409).json({ success: false, error: error.message });
     }
     
     res.status(500).json({ success: false, error: 'Error interno del servidor' });
@@ -56,14 +71,25 @@ exports.getOrderById = async (req, res) => {
 /**
  * Listar órdenes con filtros
  * GET /api/orders
+ * - buyers: ven solo sus órdenes
+ * - restaurants: ven solo órdenes de su restaurante
  */
 exports.listOrders = async (req, res) => {
   try {
-    const { userId, restaurantId, status } = req.query;
+    const userRole = req.user.role;
+    const userId = req.user.sub;
     
     const filters = {};
-    if (userId) filters.userId = userId;
-    if (restaurantId) filters.restaurantId = restaurantId;
+    
+    // Filtrado automático según el rol
+    if (userRole === 'buyer') {
+      filters.userId = userId;
+    } else if (userRole === 'restaurant') {
+      filters.restaurantId = userId; // userId es el restaurantId para restaurants
+    }
+    
+    // Filtros adicionales por query params
+    const { status } = req.query;
     if (status) filters.status = status;
     
     const orders = await orderService.list(filters);
@@ -82,10 +108,23 @@ exports.listOrders = async (req, res) => {
 /**
  * Obtener órdenes de un usuario
  * GET /api/users/:userId/orders
+ * Requiere rol: buyer
+ * Validación: el usuario solo puede ver SUS propias órdenes
  */
 exports.getOrdersByUser = async (req, res) => {
   try {
-    const orders = await orderService.getByUser(req.params.userId);
+    const authenticatedUserId = req.user.sub;
+    const requestedUserId = req.params.userId;
+    
+    // Validar que el usuario solo pueda ver sus propias órdenes
+    if (authenticatedUserId !== requestedUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'No autorizado. Solo puede ver sus propias órdenes.'
+      });
+    }
+    
+    const orders = await orderService.getByUser(requestedUserId);
     
     res.json({
       success: true,
@@ -101,13 +140,25 @@ exports.getOrdersByUser = async (req, res) => {
 /**
  * Obtener órdenes de un restaurante
  * GET /api/restaurants/:restaurantId/orders
+ * Requiere rol: restaurant
+ * Validación: el restaurant solo puede ver las órdenes de SU restaurante
  */
 exports.getOrdersByRestaurant = async (req, res) => {
   try {
-    const { restaurantId } = req.params;
+    const authenticatedRestaurantId = req.user.sub;
+    const requestedRestaurantId = req.params.restaurantId;
+    
+    // Validar que el restaurant solo pueda ver sus propias órdenes
+    if (authenticatedRestaurantId !== requestedRestaurantId) {
+      return res.status(403).json({
+        success: false,
+        error: 'No autorizado. Solo puede ver las órdenes de su propio restaurante.'
+      });
+    }
+    
     const { status } = req.query;
     
-    const orders = await orderService.getByRestaurant(restaurantId, status || null);
+    const orders = await orderService.getByRestaurant(requestedRestaurantId, status || null);
     
     res.json({
       success: true,
@@ -249,15 +300,39 @@ exports.completeOrder = async (req, res) => {
 /**
  * Cancelar orden
  * POST /api/orders/:id/cancel
+ * - buyers: pueden cancelar sus propias órdenes
+ * - restaurants: pueden cancelar órdenes de su restaurante
  */
 exports.cancelOrder = async (req, res) => {
   try {
-    const order = await orderService.cancel(req.params.id);
+    const orderId = req.params.id;
+    const userRole = req.user.role;
+    const userId = req.user.sub;
+    
+    // Primero obtengo la orden para validar permisos
+    const order = await orderService.getById(orderId);
+    
+    // Validar permisos según el rol
+    if (userRole === 'buyer' && order.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'No autorizado. Solo puede cancelar sus propias órdenes.'
+      });
+    }
+    
+    if (userRole === 'restaurant' && order.restaurantId !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'No autorizado. Solo puede cancelar órdenes de su restaurante.'
+      });
+    }
+    
+    const cancelledOrder = await orderService.cancel(orderId);
     
     res.json({
       success: true,
       message: 'Orden cancelada',
-      data: order
+      data: cancelledOrder
     });
   } catch (error) {
     console.error('Error al cancelar orden:', error);

@@ -30,6 +30,14 @@ class ProductFactory {
       throw new Error('Categoría inválida. Debe ser: ' + validCategories.join(', '));
     }
 
+    // Validar restaurantId y restaurantName - DEBEN venir del usuario autenticado
+    if (!data.restaurantId) {
+      throw new Error('restaurantId es requerido. Debe provenir del usuario autenticado.');
+    }
+    if (!data.restaurantName) {
+      throw new Error('restaurantName es requerido. Debe provenir del usuario autenticado.');
+    }
+
     // Construir producto
     return {
       name: data.name.trim(),
@@ -37,8 +45,8 @@ class ProductFactory {
       price: parseFloat(data.price),
       discountPrice: parseFloat(data.discountPrice),
       quantity: parseInt(data.quantity) || 0,
-      restaurantId: data.restaurantId || 'restaurant-001',
-      restaurantName: data.restaurantName || 'Mi Restaurante',
+      restaurantId: data.restaurantId,
+      restaurantName: data.restaurantName,
       category: category,
       images: data.images || [],
       available: data.available !== false,
