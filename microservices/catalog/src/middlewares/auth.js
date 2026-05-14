@@ -1,10 +1,12 @@
 const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ecosaver_dev_secret_change_in_prod';
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_change_in_prod';
 
 // Whitelist de rutas públicas (sin autenticación)
 // Usamos match exacto o prefijo con / para evitar falsos positivos
 const PUBLIC_ROUTES = [
+  { path: '/', exact: true },  // Health check
   { path: '/products', exact: true },  // GET /products (listar todos)
   { path: '/products/restaurants', exact: false },  // GET /products/restaurants/:id
   { path: '/products/categories', exact: false },  // GET /products/categories/:id
@@ -12,7 +14,7 @@ const PUBLIC_ROUTES = [
 
 /**
  * Middleware de autenticación JWT para Catalog Service
- * Verifica el token JWT y extrae la información del usuario
+ * Verifica el token JWT O la INTERNAL_API_KEY para requests entre servicios
  * 
  * @param {Object} req - Request de Express
  * @param {Object} res - Response de Express
@@ -31,6 +33,13 @@ const authMiddleware = (req, res, next) => {
   });
   
   if (isPublicRoute) {
+    return next();
+  }
+
+  // Verificar INTERNAL_API_KEY para requests entre servicios
+  const internalApiKey = req.headers['x-internal-api-key'];
+  if (internalApiKey === INTERNAL_API_KEY) {
+    // Request interno válido, continuar
     return next();
   }
 

@@ -10,22 +10,27 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_
 class StockService {
 
   /**
-   * Valida que todos los items tengan stock suficiente
+   * Valida que todos los items tengan stock suficiente (EN PARALELO)
    * @param {Array} items - Array de items con productId y quantity
    * @throws {Error} Si no hay stock suficiente o producto no disponible
    */
   async validateStock(items) {
     console.log('📦 validateStock - Iniciando validación para', items.length, 'items');
-    const stockErrors = [];
-
-    for (const item of items) {
+    
+    // Validar todos los items en paralelo para mejor performance
+    const validationResults = await Promise.all(items.map(async (item) => {
       try {
         console.log('📦 validateStock - Validando item:', item.productId, 'cantidad:', item.quantity);
         
-        // Obtener información del producto
+        // Obtener información del producto con timeout más corto (5 segundos)
         const response = await axios.get(
           `${CATALOG_SERVICE_URL}/products/${item.productId}`,
-          { timeout: 10000 }
+          {
+            timeout: 5000,
+            headers: {
+              'X-Internal-API-Key': INTERNAL_API_KEY
+            }
+          }
         );
         
         console.log('📦 validateStock - Response del catálogo:', response.status, response.data?.success);
@@ -33,62 +38,66 @@ class StockService {
 
         if (!product) {
           console.warn('📦 validateStock - Producto no encontrado:', item.productId);
-          stockErrors.push({
+          return {
             productId: item.productId,
             productName: 'Producto no encontrado',
             requested: item.quantity,
             available: 0,
             reason: 'Producto no encontrado'
-          });
-          continue;
+          };
         }
 
         // Verificar disponibilidad
         if (!product.available) {
           console.warn('📦 validateStock - Producto no disponible:', product.name);
-          stockErrors.push({
+          return {
             productId: item.productId,
             productName: product.name,
             requested: item.quantity,
             available: 0,
             reason: 'Producto no disponible'
-          });
-          continue;
+          };
         }
 
         // Verificar stock suficiente
         if (product.quantity < item.quantity) {
           console.warn('📦 validateStock - Stock insuficiente:', product.name, 'disponible:', product.quantity, 'requerido:', item.quantity);
-          stockErrors.push({
+          return {
             productId: item.productId,
             productName: product.name,
             requested: item.quantity,
             available: product.quantity
-          });
+          };
         }
+        
+        // Stock válido
+        return null;
       } catch (error) {
         console.error('❌ validateStock - Error validando item:', item.productId, error.code, error.message);
         
         if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
-          stockErrors.push({
+          return {
             productId: item.productId,
             requested: item.quantity,
             available: 0,
             reason: 'Timeout al conectar con el catálogo'
-          });
+          };
         } else if (error.response?.status === 404) {
-          stockErrors.push({
+          return {
             productId: item.productId,
             requested: item.quantity,
             available: 0,
             reason: 'Producto no encontrado'
-          });
+          };
         } else {
           // Re-lanzar errores inesperados
           throw error;
         }
       }
-    }
+    }));
+    
+    // Filtrar solo los errores (null = stock válido)
+    const stockErrors = validationResults.filter(result => result !== null);
 
     console.log('📦 validateStock - Validación completada. Errores:', stockErrors.length);
 

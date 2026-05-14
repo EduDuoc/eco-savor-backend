@@ -242,21 +242,250 @@ app.use('/api/users', createProxyMiddleware({
   }
 }));
 
-// Proxy para orders-service
-app.use('/api/orders', createProxyMiddleware({ 
-  target: SERVICES.orders, 
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api/orders': '',
-  },
-  onProxyReq: (proxyReq, req) => {
-    // Inyectar headers de usuario si está autenticado
+// === HANDLERS MANUALS PARA ORDERS (usando axios en vez de http-proxy-middleware) ===
+// Esto evita el bug de http-proxy-middleware con Express 5 que aborta requests POST
+
+// POST /api/orders - Crear orden
+app.post('/api/orders', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
     if (req.auth) {
-      proxyReq.setHeader('X-User-Id', req.auth.sub);
-      proxyReq.setHeader('X-User-Role', req.auth.role);
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
     }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.post(`${SERVICES.orders}/api/orders`, req.body, { 
+      headers,
+      timeout: 30000 // 30 segundos timeout
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('Proxy error (POST /orders):', error.message);
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
   }
-}));
+});
+
+// GET /api/orders - Listar órdenes
+app.get('/api/orders', async (req, res) => {
+  try {
+    const headers = {};
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.get(`${SERVICES.orders}/api/orders`, { 
+      headers,
+      params: req.query,
+      timeout: 30000
+    });
+    res.json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// GET /api/orders/:id - Obtener orden por ID
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const headers = {};
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.get(`${SERVICES.orders}/api/orders/${req.params.id}`, { 
+      headers,
+      timeout: 30000
+    });
+    res.json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// PUT /api/orders/:id - Actualizar orden completa
+app.put('/api/orders/:id', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.put(`${SERVICES.orders}/api/orders/${req.params.id}`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// PUT /api/orders/:id/status - Actualizar estado
+app.put('/api/orders/:id/status', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.put(`${SERVICES.orders}/api/orders/${req.params.id}/status`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// POST /api/orders/:id/confirm - Confirmar orden
+app.post('/api/orders/:id/confirm', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/confirm`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// POST /api/orders/:id/preparing - Marcar como en preparación
+app.post('/api/orders/:id/preparing', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/preparing`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// POST /api/orders/:id/ready - Marcar como lista
+app.post('/api/orders/:id/ready', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/ready`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// POST /api/orders/:id/complete - Completar orden
+app.post('/api/orders/:id/complete', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/complete`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
+
+// POST /api/orders/:id/cancel - Cancelar orden
+app.post('/api/orders/:id/cancel', async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    if (req.auth) {
+      headers['X-User-Id'] = req.auth.sub;
+      headers['X-User-Role'] = req.auth.role;
+    }
+    if (req.headers.authorization) {
+      headers['Authorization'] = req.headers.authorization;
+    }
+    
+    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/cancel`, req.body, { 
+      headers,
+      timeout: 30000
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || 'Error en orders service';
+    res.status(status).json({ success: false, error: message });
+  }
+});
 
 // Proxy para restaurants (alias público para listar restaurantes)
 app.use('/api/restaurants', createProxyMiddleware({ 

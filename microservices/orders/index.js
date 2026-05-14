@@ -16,13 +16,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware de autenticación (verifica JWT en todas las rutas)
-app.use(authMiddleware);
-
-// Rutas
-app.use('/api/orders', orderRoutes);
-
-// Health check
+// Rutas PÚBLICAS (van PRIMERO, antes del middleware de auth)
+// Health check - debe ser público para que funcione el Docker healthcheck
 app.get('/', (req, res) => {
   res.json({ 
     service: 'Orders Microservice',
@@ -31,6 +26,12 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Middleware de autenticación (verifica JWT en todas las rutas EXCEPTO /)
+app.use(authMiddleware);
+
+// Rutas protegidas
+app.use('/api/orders', orderRoutes);
 
 // 404
 app.use((req, res) => {

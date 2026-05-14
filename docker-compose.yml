@@ -54,6 +54,7 @@ services:
       PORT: 3002
       MONGO_URI: mongodb://ecosaver:ecosaver_secret@mongo:27017/ecosaver_catalog?authSource=admin
       NODE_ENV: development
+      INTERNAL_API_KEY: ecosaver_internal_key_change_in_prod
     ports:
       - "3002:3002"
     depends_on:
@@ -77,6 +78,8 @@ services:
       PORT: 3003
       MONGO_URI: mongodb://ecosaver:ecosaver_secret@mongo:27017/ecosaver_orders?authSource=admin
       NODE_ENV: development
+      CATALOG_SERVICE_URL: http://catalog-service:3002
+      INTERNAL_API_KEY: ecosaver_internal_key_change_in_prod
     ports:
       - "3003:3003"
     depends_on:
