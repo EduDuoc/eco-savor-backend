@@ -21,11 +21,11 @@ exports.createProduct = async (req, res) => {
       data: newProduct
     });
   } catch (error) {
-    console.error('Error al crear producto:', error);
+    console.error('❌ Error al crear producto:', error);
     if (error.message.includes('Categoría') || error.message.includes('precio') || error.message.includes('restaurant')) {
       return res.status(400).json({ success: false, error: error.message });
     }
-    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+    res.status(500).json({ success: false, error: 'Error interno del servidor: ' + error.message });
   }
 };
 
