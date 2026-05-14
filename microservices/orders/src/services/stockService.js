@@ -15,13 +15,9 @@ class StockService {
    * @throws {Error} Si no hay stock suficiente o producto no disponible
    */
   async validateStock(items) {
-    console.log('📦 validateStock - Iniciando validación para', items.length, 'items');
-    
     // Validar todos los items en paralelo para mejor performance
     const validationResults = await Promise.all(items.map(async (item) => {
       try {
-        console.log('📦 validateStock - Validando item:', item.productId, 'cantidad:', item.quantity);
-        
         // Obtener información del producto con timeout más corto (5 segundos)
         const response = await axios.get(
           `${CATALOG_SERVICE_URL}/products/${item.productId}`,
@@ -33,11 +29,9 @@ class StockService {
           }
         );
         
-        console.log('📦 validateStock - Response del catálogo:', response.status, response.data?.success);
         const product = response.data.data;
 
         if (!product) {
-          console.warn('📦 validateStock - Producto no encontrado:', item.productId);
           return {
             productId: item.productId,
             productName: 'Producto no encontrado',
@@ -49,7 +43,6 @@ class StockService {
 
         // Verificar disponibilidad
         if (!product.available) {
-          console.warn('📦 validateStock - Producto no disponible:', product.name);
           return {
             productId: item.productId,
             productName: product.name,
@@ -61,7 +54,6 @@ class StockService {
 
         // Verificar stock suficiente
         if (product.quantity < item.quantity) {
-          console.warn('📦 validateStock - Stock insuficiente:', product.name, 'disponible:', product.quantity, 'requerido:', item.quantity);
           return {
             productId: item.productId,
             productName: product.name,
@@ -73,8 +65,6 @@ class StockService {
         // Stock válido
         return null;
       } catch (error) {
-        console.error('❌ validateStock - Error validando item:', item.productId, error.code, error.message);
-        
         if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
           return {
             productId: item.productId,
@@ -98,8 +88,6 @@ class StockService {
     
     // Filtrar solo los errores (null = stock válido)
     const stockErrors = validationResults.filter(result => result !== null);
-
-    console.log('📦 validateStock - Validación completada. Errores:', stockErrors.length);
 
     if (stockErrors.length > 0) {
       const error = new Error('Stock insuficiente para algunos productos');
@@ -192,11 +180,6 @@ class StockService {
           error: error.message
         });
       }
-    }
-
-    // Si hay fallos, loguear alerta crítica
-    if (report.failed.length > 0) {
-      console.error('⚠️ ROLLBACK PARCIAL: Algunos items no se restauraron:', report.failed);
     }
 
     return report;

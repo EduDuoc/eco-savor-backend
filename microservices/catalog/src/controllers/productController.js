@@ -201,17 +201,9 @@ exports.markAsUnavailable = async (req, res) => {
  */
 exports.deductStock = async (req, res) => {
   try {
-    console.log('📦 deductStock - Request recibido:', {
-      productId: req.params.id,
-      quantity: req.body.quantity,
-      hasApiKey: !!req.headers['x-internal-api-key']
-    });
-    
     // Verificar API key interna
     const apiKey = req.headers['x-internal-api-key'];
     const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_change_in_prod';
-    
-    console.log('📦 deductStock - API Key check:', apiKey === INTERNAL_API_KEY ? '✅ OK' : '❌ FAIL');
     
     if (apiKey !== INTERNAL_API_KEY) {
       return res.status(401).json({
@@ -228,7 +220,6 @@ exports.deductStock = async (req, res) => {
       });
     }
 
-    console.log('📦 deductStock - Llamando a productService.deductStock...');
     const product = await productService.deductStock(req.params.id, quantity);
     
     if (!product) {

@@ -3,17 +3,57 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const request = require('supertest');
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const Product = require('./src/models/productModel');
 const productRoutes = require('./src/routes/productRoutes');
 const connectDB = require('./src/config/database');
 
 let mongoServer;
 const app = express();
+const JWT_SECRET = 'ecosaver_dev_secret_change_in_prod';
+
+// Helper para generar tokens JWT válidos
+const generateToken = (userId, role, restaurantName = 'Test Restaurant') => {
+  return jwt.sign(
+    { sub: userId, email: 'test@test.com', role, name: 'Test User', restaurantName },
+    JWT_SECRET,
+    { expiresIn: '8h' }
+  );
+};
 
 // Setup similar al index.js
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Mock de auth middleware para tests (inyecta req.auth directamente)
+app.use('/products', (req, res, next) => {
+  if (req.headers.authorization) {
+    try {
+      const token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.auth = { 
+        sub: decoded.sub, 
+        role: decoded.role, 
+        email: decoded.email,
+        name: decoded.name,
+        restaurantName: decoded.restaurantName
+      };
+    } catch (e) {
+      // Ignorar errores de auth en tests
+    }
+  }
+  // También inyectar headers X-User-Id si vienen
+  if (req.headers['x-user-id']) {
+    req.auth = req.auth || {};
+    req.auth.sub = req.headers['x-user-id'];
+    req.auth.role = req.headers['x-user-role'] || 'restaurant';
+    req.auth.name = 'Test User';
+    req.auth.restaurantName = 'Test Restaurant';
+  }
+  next();
+});
+
 app.use('/products', productRoutes);
 
 beforeAll(async () => {
@@ -165,12 +205,12 @@ describe('Catalog Microservice', () => {
         }
       ]);
 
-      // Simular autenticación JWT
+      // Generar token JWT válido para el restaurante
+      const token = generateToken('rest-123', 'restaurant');
+      
       const res = await request(app)
         .get('/products/my-products')
-        .set('Authorization', 'Bearer fake-token')
-        .set('X-User-Id', 'rest-123')
-        .set('X-User-Role', 'restaurant');
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -190,10 +230,12 @@ describe('Catalog Microservice', () => {
         category: 'comida caliente'
       };
 
-      // Simular autenticación JWT con token válido (el middleware de auth lo valida)
+      // Generar token JWT válido
+      const token = generateToken('rest-123', 'restaurant');
+      
       const res = await request(app)
         .post('/products')
-        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJyZXN0LTEyMyIsImVtYWlsIjoidGVzdEB0ZXN0LmNvbSIsInJvbGUiOiJyZXN0YXVyYW50IiwibmFtZSI6Ik1pIFJlc3RhdXJhbnRlIiwiaWF0IjoxNjAwMDAwMDAwfQ.fake-signature')
+        .set('Authorization', `Bearer ${token}`)
         .send(productData);
 
       expect(res.status).toBe(201);

@@ -40,7 +40,9 @@ const authMiddleware = (req, res, next) => {
       req.user = {
         sub: req.auth.sub,      // ID del usuario
         email: req.auth.email,
-        role: req.auth.role
+        role: req.auth.role,
+        name: req.auth.name,     // Nombre del usuario (necesario para órdenes)
+        restaurantName: req.auth.restaurantName  // Nombre del restaurante (para órdenes)
       };
     }
 
@@ -67,7 +69,9 @@ const optionalAuth = (req, res, next) => {
     req.user = {
       sub: decoded.sub,
       email: decoded.email,
-      role: decoded.role
+      role: decoded.role,
+      name: decoded.name,
+      restaurantName: decoded.restaurantName
     };
   } catch (error) {
     // Token inválido pero no bloqueamos - es opcional

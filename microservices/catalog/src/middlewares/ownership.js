@@ -24,7 +24,7 @@ const requireOwnership = async (req, res, next) => {
 
     // Para UPDATE/DELETE: validar ownership
     const productId = req.params.id;
-    const product = await Product.findById(productId);
+    const product = await Product.findById(productId).select('restaurantId');
 
     if (!product) {
       return res.status(404).json({

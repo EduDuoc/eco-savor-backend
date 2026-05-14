@@ -7,6 +7,13 @@ const jwt = require('jsonwebtoken');
 const Order = require('./src/models/orderModel');
 const orderRoutes = require('./src/routes/orderRoutes');
 
+// Mock del stockService para evitar llamadas HTTP al catalog-service en tests
+jest.mock('./src/services/stockService', () => ({
+  validateStock: jest.fn().mockResolvedValue({ valid: true }),
+  deductStock: jest.fn().mockResolvedValue({ success: true }),
+  restoreStock: jest.fn().mockResolvedValue({ success: true })
+}));
+
 let mongoServer;
 const app = express();
 const JWT_SECRET = 'ecosaver_dev_secret_change_in_prod';

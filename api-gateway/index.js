@@ -5,19 +5,14 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const { expressjwt } = require('express-jwt');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
+const { SERVICES } = require('./src/services.config');
+const { createProxyHandler } = require('./src/proxyHandler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 // ⚠️ JWT_SECRET debe estar en .env. El fallback es SOLO para desarrollo local.
 // En producción usar: process.env.JWT_SECRET sin fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'ecosaver_dev_secret_change_in_prod';
-
-// URLs de los microservicios (Docker o local)
-const SERVICES = {
-  users: process.env.USERS_SERVICE_URL || 'http://localhost:3001',
-  catalog: process.env.CATALOG_SERVICE_URL || 'http://localhost:3002',
-  orders: process.env.ORDERS_SERVICE_URL || 'http://localhost:3003'
-};
 
 // Middlewares globales
 app.use(cors());
@@ -124,110 +119,24 @@ app.use((err, req, res, next) => {
 
 // === CONFIGURACIÓN DEL PROXY ===
 // Rutas específicas para catalog con axios (evita bugs de http-proxy-middleware con body)
-app.post('/api/catalog/products', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.catalog}/products`, req.body, { headers });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error('Proxy error (POST /products):', error.message);
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en catalog service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+
+// POST products - Crear producto
+app.post('/api/catalog/products', createProxyHandler(SERVICES.catalog, '/products'));
 
 // GET products (público)
-app.get('/api/catalog/products', async (req, res) => {
-  try {
-    const response = await axios.get(`${SERVICES.catalog}/products`, { params: req.query });
-    res.json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en catalog service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.get('/api/catalog/products', createProxyHandler(SERVICES.catalog, '/products', { forwardAuth: false }));
 
 // GET product by ID
-app.get('/api/catalog/products/:id', async (req, res) => {
-  try {
-    const response = await axios.get(`${SERVICES.catalog}/products/${req.params.id}`);
-    res.json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en catalog service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.get('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id', { forwardAuth: false }));
 
-// PUT product
-app.put('/api/catalog/products/:id', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.put(`${SERVICES.catalog}/products/${req.params.id}`, req.body, { headers });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en catalog service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+// PUT product - Actualizar producto
+app.put('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id'));
 
-// DELETE product
-app.delete('/api/catalog/products/:id', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.delete(`${SERVICES.catalog}/products/${req.params.id}`, { headers });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en catalog service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+// DELETE product - Eliminar producto
+app.delete('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id'));
 
-// GET my-products (solo para restaurantes autenticados)
-app.get('/api/catalog/my-products', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    // El catalog service tiene las rutas montadas en /products, entonces /my-products -> /products/my-products
-    const response = await axios.get(`${SERVICES.catalog}/products/my-products`, { headers });
-    res.json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en catalog service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+// GET my-products - Productos del restaurante autenticado
+app.get('/api/catalog/my-products', createProxyHandler(SERVICES.catalog, '/products/my-products'));
 
 // Proxy para users-service
 app.use('/api/users', createProxyMiddleware({ 
@@ -244,250 +153,36 @@ app.use('/api/users', createProxyMiddleware({
   }
 }));
 
-// === HANDLERS MANUALS PARA ORDERS (usando axios en vez de http-proxy-middleware) ===
-// Esto evita el bug de http-proxy-middleware con Express 5 que aborta requests POST
-
+// === HANDLERS PARA ORDERS (usando createProxyHandler) ===
 // POST /api/orders - Crear orden
-app.post('/api/orders', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.orders}/api/orders`, req.body, { 
-      headers,
-      timeout: 30000 // 30 segundos timeout
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    console.error('Proxy error (POST /orders):', error.message);
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.post('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders'));
 
 // GET /api/orders - Listar órdenes
-app.get('/api/orders', async (req, res) => {
-  try {
-    const headers = {};
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.get(`${SERVICES.orders}/api/orders`, { 
-      headers,
-      params: req.query,
-      timeout: 30000
-    });
-    res.json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.get('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders'));
 
 // GET /api/orders/:id - Obtener orden por ID
-app.get('/api/orders/:id', async (req, res) => {
-  try {
-    const headers = {};
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.get(`${SERVICES.orders}/api/orders/${req.params.id}`, { 
-      headers,
-      timeout: 30000
-    });
-    res.json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.get('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id'));
 
 // PUT /api/orders/:id - Actualizar orden completa
-app.put('/api/orders/:id', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.put(`${SERVICES.orders}/api/orders/${req.params.id}`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.put('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id'));
 
 // PUT /api/orders/:id/status - Actualizar estado
-app.put('/api/orders/:id/status', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.put(`${SERVICES.orders}/api/orders/${req.params.id}/status`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.put('/api/orders/:id/status', createProxyHandler(SERVICES.orders, '/api/orders/:id/status'));
 
 // POST /api/orders/:id/confirm - Confirmar orden
-app.post('/api/orders/:id/confirm', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/confirm`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.post('/api/orders/:id/confirm', createProxyHandler(SERVICES.orders, '/api/orders/:id/confirm'));
 
 // POST /api/orders/:id/preparing - Marcar como en preparación
-app.post('/api/orders/:id/preparing', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/preparing`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.post('/api/orders/:id/preparing', createProxyHandler(SERVICES.orders, '/api/orders/:id/preparing'));
 
 // POST /api/orders/:id/ready - Marcar como lista
-app.post('/api/orders/:id/ready', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/ready`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.post('/api/orders/:id/ready', createProxyHandler(SERVICES.orders, '/api/orders/:id/ready'));
 
 // POST /api/orders/:id/complete - Completar orden
-app.post('/api/orders/:id/complete', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/complete`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.post('/api/orders/:id/complete', createProxyHandler(SERVICES.orders, '/api/orders/:id/complete'));
 
 // POST /api/orders/:id/cancel - Cancelar orden
-app.post('/api/orders/:id/cancel', async (req, res) => {
-  try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (req.auth) {
-      headers['X-User-Id'] = req.auth.sub;
-      headers['X-User-Role'] = req.auth.role;
-    }
-    if (req.headers.authorization) {
-      headers['Authorization'] = req.headers.authorization;
-    }
-    
-    const response = await axios.post(`${SERVICES.orders}/api/orders/${req.params.id}/cancel`, req.body, { 
-      headers,
-      timeout: 30000
-    });
-    res.status(response.status).json(response.data);
-  } catch (error) {
-    const status = error.response?.status || 500;
-    const message = error.response?.data?.error || 'Error en orders service';
-    res.status(status).json({ success: false, error: message });
-  }
-});
+app.post('/api/orders/:id/cancel', createProxyHandler(SERVICES.orders, '/api/orders/:id/cancel'));
 
 // Proxy para restaurants (alias público para listar restaurantes)
 app.use('/api/restaurants', createProxyMiddleware({ 

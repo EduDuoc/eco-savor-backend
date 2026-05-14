@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">15% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>3/20</span>
+                <span class='fraction'>10/20</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">40% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/10</span>
+                <span class='fraction'>4/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">15% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>3/20</span>
+                <span class='fraction'>10/20</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -123,21 +123,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -175,27 +175,27 @@
  * Middleware de validación de ownership para productos
  * Simplificado para evitar timeouts
  */
-const requireOwnership = <span class="fstat-no" title="function not covered" >as</span>ync (req, res, next) =&gt; {
-<span class="cstat-no" title="statement not covered" >  try {</span>
-<span class="cstat-no" title="statement not covered" >    if (!req.user || !req.user.sub) {</span>
+const requireOwnership = async (req, res, next) =&gt; {
+  try {
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!req.user || !req.user.sub) {
 <span class="cstat-no" title="statement not covered" >      return res.status(401).json({</span>
         success: false,
         error: 'No autenticado. Por favor inicie sesión.'
       });
     }
 &nbsp;
-    const userId = <span class="cstat-no" title="statement not covered" >req.user.sub;</span>
+    const userId = req.user.sub;
 &nbsp;
     // Para CREATE: solo asignar restaurantId del usuario
-<span class="cstat-no" title="statement not covered" >    if (req.method === 'POST') {</span>
-<span class="cstat-no" title="statement not covered" >      req.body.restaurantId = userId;</span>
-<span class="cstat-no" title="statement not covered" >      console.log('Creating product for restaurant:', userId);</span>
-<span class="cstat-no" title="statement not covered" >      return next();</span>
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (req.method === 'POST') {
+      req.body.restaurantId = userId;
+      console.log('Creating product for restaurant:', userId);
+      return next();
     }
 &nbsp;
     // Para UPDATE/DELETE: validar ownership
     const productId = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
-    const product = <span class="cstat-no" title="statement not covered" >await Product.findById(productId);</span>
+    const product = <span class="cstat-no" title="statement not covered" >await Product.findById(productId).select('restaurantId');</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (!product) {</span>
 <span class="cstat-no" title="statement not covered" >      return res.status(404).json({</span>
@@ -229,7 +229,7 @@ module.exports = requireOwnership;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T01:45:02.249Z
+                at 2026-05-14T16:50:49.308Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">58.82% </span>
+                <span class="strong">67.64% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>20/34</span>
+                <span class='fraction'>23/34</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">54.16% </span>
+                <span class="strong">62.5% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>13/24</span>
+                <span class='fraction'>15/24</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">58.82% </span>
+                <span class="strong">67.64% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>20/34</span>
+                <span class='fraction'>23/34</span>
             </div>
         
             
@@ -174,7 +174,9 @@
 <a name='L109'></a><a href='#L109'>109</a>
 <a name='L110'></a><a href='#L110'>110</a>
 <a name='L111'></a><a href='#L111'>111</a>
-<a name='L112'></a><a href='#L112'>112</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -228,8 +230,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -242,8 +244,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -251,7 +253,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -272,6 +275,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -338,7 +342,7 @@ const authMiddleware = (req, res, next) =&gt; {
   });
 &nbsp;
   jwtMiddleware(req, res, (err) =&gt; {
-    <span class="missing-if-branch" title="else path not taken" >E</span>if (err) {
+    if (err) {
       <span class="missing-if-branch" title="else path not taken" >E</span>if (err.name === 'UnauthorizedError') {
         return res.status(401).json({
           success: false,
@@ -353,16 +357,17 @@ const authMiddleware = (req, res, next) =&gt; {
 &nbsp;
     // req.auth está disponible (payload del JWT)
     // Subordinamos la información del usuario para que esté disponible como req.user
-<span class="cstat-no" title="statement not covered" >    if (req.auth) {</span>
-<span class="cstat-no" title="statement not covered" >      req.user = {</span>
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (req.auth) {
+      req.user = {
         sub: req.auth.sub,      // ID del usuario
         email: req.auth.email,
         role: req.auth.role,
-        name: req.auth.name     // Nombre del usuario (necesario para productos)
+        name: req.auth.name,     // Nombre del usuario (necesario para productos)
+        restaurantName: req.auth.restaurantName  // Nombre del restaurante (para productos)
       };
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    next();</span>
+    next();
   });
 };
 &nbsp;
@@ -386,7 +391,8 @@ const optionalAuth = <span class="fstat-no" title="function not covered" >(r</sp
       sub: decoded.sub,
       email: decoded.email,
       role: decoded.role,
-      name: decoded.name
+      name: decoded.name,
+      restaurantName: decoded.restaurantName
     };
   } catch (error) {
     // Token inválido pero no bloqueamos - es opcional
@@ -403,7 +409,7 @@ module.exports = { authMiddleware, optionalAuth };
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T01:45:02.249Z
+                at 2026-05-14T16:50:49.308Z
             </div>
         <script src="../prettify.js"></script>
         <script>

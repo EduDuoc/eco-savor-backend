@@ -11,20 +11,11 @@ const orderService = require('../services/orderService');
  */
 exports.createOrder = async (req, res) => {
   try {
-    console.log('🛒 createOrder - Request recibido:', {
-      userId: req.user.sub,
-      itemsCount: req.body.items?.length || 0,
-      totalAmount: req.body.totalAmount
-    });
-    
     // El userId viene del usuario autenticado
     const userId = req.user.sub;
     const { orderType, scheduledTime, ...orderData } = req.body;
     
-    console.log('🛒 createOrder - Llamando a orderService.create...');
     const newOrder = await orderService.create(orderData, orderType, scheduledTime, userId);
-    
-    console.log('🛒 createOrder - Orden creada:', newOrder.id || newOrder._id);
     
     res.status(201).json({
       success: true,
@@ -34,7 +25,7 @@ exports.createOrder = async (req, res) => {
   } catch (error) {
     console.error('❌ Error al crear orden:', error);
     
-    if (error.message.includes('productos') || error.message.includes('restaurante') || error.message.includes('hora')) {
+    if (error.message.includes('producto') || error.message.includes('restaurante') || error.message.includes('hora')) {
       return res.status(400).json({ success: false, error: error.message });
     }
     if (error.message.includes('Stock')) {

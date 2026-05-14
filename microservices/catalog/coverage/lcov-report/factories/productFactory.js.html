@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.55% </span>
+                <span class="strong">61.11% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/18</span>
+                <span class='fraction'>11/18</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">64.28% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/28</span>
+                <span class='fraction'>18/28</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">5.55% </span>
+                <span class="strong">61.11% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/18</span>
+                <span class='fraction'>11/18</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -129,40 +129,40 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -185,53 +185,53 @@
 &nbsp;
 class ProductFactory {
 &nbsp;
-<span class="fstat-no" title="function not covered" >  cr</span>eate(data) {
+  create(data) {
     // Validar campos requeridos
-<span class="cstat-no" title="statement not covered" >    if (!data.name || !data.description) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!data.name || !data.description) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('Nombre y descripción son requeridos');</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!data.price || data.price &lt;= 0) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!data.price || data.price &lt;= 0) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('El precio debe ser mayor a 0');</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!data.discountPrice || data.discountPrice &lt;= 0) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!data.discountPrice || data.discountPrice &lt;= 0) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('El precio con descuento debe ser mayor a 0');</span>
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (data.discountPrice &gt;= data.price) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (data.discountPrice &gt;= data.price) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('El precio con descuento debe ser menor al precio original');</span>
     }
 &nbsp;
     // Validar categoría
-    const validCategories = <span class="cstat-no" title="statement not covered" >['panadería', 'comida caliente', 'bebidas', 'postres', 'otros'];</span>
-    const category = <span class="cstat-no" title="statement not covered" >data.category || 'otros';</span>
+    const validCategories = ['panadería', 'comida caliente', 'bebidas', 'postres', 'otros'];
+    const category = data.category || <span class="branch-1 cbranch-no" title="branch not covered" >'otros';</span>
     
-<span class="cstat-no" title="statement not covered" >    if (!validCategories.includes(category)) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!validCategories.includes(category)) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('Categoría inválida. Debe ser: ' + validCategories.join(', '));</span>
     }
 &nbsp;
     // Validar restaurantId y restaurantName - DEBEN venir del usuario autenticado
-<span class="cstat-no" title="statement not covered" >    if (!data.restaurantId) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!data.restaurantId) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('restaurantId es requerido. Debe provenir del usuario autenticado.');</span>
     }
-<span class="cstat-no" title="statement not covered" >    if (!data.restaurantName) {</span>
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (!data.restaurantName) {
 <span class="cstat-no" title="statement not covered" >      throw new Error('restaurantName es requerido. Debe provenir del usuario autenticado.');</span>
     }
 &nbsp;
     // Construir producto
-<span class="cstat-no" title="statement not covered" >    return {</span>
+    return {
       name: data.name.trim(),
       description: data.description.trim(),
       price: parseFloat(data.price),
       discountPrice: parseFloat(data.discountPrice),
-      quantity: parseInt(data.quantity) || 0,
+      quantity: parseInt(data.quantity) || <span class="branch-1 cbranch-no" title="branch not covered" >0,</span>
       restaurantId: data.restaurantId,
       restaurantName: data.restaurantName,
       category: category,
       images: data.images || [],
       available: data.available !== false,
-      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null
+      expiresAt: data.expiresAt ? <span class="branch-0 cbranch-no" title="branch not covered" >new Date(data.expiresAt) </span>: null
     };
   }
 }
@@ -244,7 +244,7 @@ module.exports = new ProductFactory();
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T01:45:02.249Z
+                at 2026-05-14T16:50:49.308Z
             </div>
         <script src="../prettify.js"></script>
         <script>
