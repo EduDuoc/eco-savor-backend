@@ -20,7 +20,7 @@ beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const mongoUri = mongoServer.getUri();
   await mongoose.connect(mongoUri);
-});
+}, 60000); // 60 segundos para descarga de MongoDB
 
 afterAll(async () => {
   await mongoose.disconnect();
@@ -96,7 +96,7 @@ describe('Users Microservice', () => {
 
       const res = await request(app).post('/api/users/register').send(userData);
 
-      expect(res.status).toBe(500);
+      expect(res.status).toBe(400); // El factory lanza error que se maneja como 400
     });
   });
 

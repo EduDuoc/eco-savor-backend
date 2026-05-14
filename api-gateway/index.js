@@ -58,7 +58,8 @@ app.post('/api/auth/login', async (req, res) => {
         sub: user.id, 
         email: user.email, 
         role: user.role,
-        name: user.name  // Necesario para crear productos
+        name: user.name,  // Nombre de la persona
+        restaurantName: user.restaurantName || user.name  // Nombre del restaurante (fallback al nombre si no es restaurant)
       },
       JWT_SECRET,
       { expiresIn: '8h' }
@@ -72,7 +73,8 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        restaurantName: user.restaurantName
       }
     });
   } catch (error) {

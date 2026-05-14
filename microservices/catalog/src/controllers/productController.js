@@ -10,8 +10,8 @@ exports.createProduct = async (req, res) => {
     // Esto previene que un usuario cree productos para otro restaurant
     const productData = {
       ...req.body,
-      restaurantId: req.user?.sub,      // ID del usuario desde JWT
-      restaurantName: req.user?.name    // Nombre desde JWT
+      restaurantId: req.user?.sub,           // ID del usuario desde JWT
+      restaurantName: req.user?.restaurantName || req.user?.name  // Nombre del restaurante desde JWT
     };
     
     const newProduct = await productService.create(productData);
