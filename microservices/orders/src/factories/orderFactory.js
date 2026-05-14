@@ -1,5 +1,5 @@
 /**
- * Factory Method Pattern: Crea órdenes según el tipo
+ * Factory Method Pattern: Crea órdenes según el tipo.
  */
 
 class OrderFactory {
