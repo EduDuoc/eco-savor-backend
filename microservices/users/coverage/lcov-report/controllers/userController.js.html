@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">45.28% </span>
+                <span class="strong">62.26% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>24/53</span>
+                <span class='fraction'>33/53</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">43.75% </span>
+                <span class="strong">50% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/16</span>
+                <span class='fraction'>8/16</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">33.33% </span>
+                <span class="strong">66.66% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/6</span>
+                <span class='fraction'>4/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">45.28% </span>
+                <span class="strong">62.26% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>24/53</span>
+                <span class='fraction'>33/53</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -300,10 +300,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -319,18 +319,18 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -459,11 +459,11 @@ exports.login = async (req, res) =&gt; {
  * Obtener todos los restaurantes
  * GET /api/users/restaurants
  */
-exports.getRestaurants = <span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const restaurants = <span class="cstat-no" title="statement not covered" >await userService.getAllRestaurants();</span>
+exports.getRestaurants = async (req, res) =&gt; {
+  try {
+    const restaurants = await userService.getAllRestaurants();
     
-<span class="cstat-no" title="statement not covered" >    res.json({</span>
+    res.json({
       success: true,
       count: restaurants.length,
       data: restaurants
@@ -478,19 +478,19 @@ exports.getRestaurants = <span class="fstat-no" title="function not covered" >as
  * Obtener usuario por ID
  * GET /api/users/:id
  */
-exports.getUserById = <span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const user = <span class="cstat-no" title="statement not covered" >await userService.getUserById(req.params.id);</span>
+exports.getUserById = async (req, res) =&gt; {
+  try {
+    const user = await userService.getUserById(req.params.id);
     
-<span class="cstat-no" title="statement not covered" >    res.json({</span>
+    res.json({
       success: true,
       data: user
     });
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error('Error al obtener usuario:', error);</span>
+    console.error('Error al obtener usuario:', error);
     
-<span class="cstat-no" title="statement not covered" >    if (error.message === 'Usuario no encontrado') {</span>
-<span class="cstat-no" title="statement not covered" >      return res.status(404).json({ success: false, error: error.message });</span>
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (error.message === 'Usuario no encontrado') {
+      return res.status(404).json({ success: false, error: error.message });
     }
     
 <span class="cstat-no" title="statement not covered" >    res.status(500).json({ success: false, error: 'Error interno del servidor' });</span>
@@ -550,7 +550,7 @@ exports.deleteUser = <span class="fstat-no" title="function not covered" >as</sp
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T15:49:17.249Z
+                at 2026-06-22T09:26:18.334Z
             </div>
         <script src="../prettify.js"></script>
         <script>

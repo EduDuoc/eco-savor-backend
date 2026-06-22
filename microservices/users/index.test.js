@@ -138,4 +138,76 @@ describe('Users Microservice', () => {
       expect(res.body.success).toBe(false);
     });
   });
+
+  describe('GET /api/users/restaurants', () => {
+    it('lista todos los restaurantes (excluye buyers)', async () => {
+      await User.create([
+        {
+          email: 'rest1@test.com',
+          password: 'password123',
+          name: 'Restaurante Uno',
+          role: 'restaurant',
+          restaurantName: 'Restaurante Uno'
+        },
+        {
+          email: 'rest2@test.com',
+          password: 'password123',
+          name: 'Restaurante Dos',
+          role: 'restaurant',
+          restaurantName: 'Restaurante Dos'
+        },
+        {
+          email: 'buyer-mix@test.com',
+          password: 'password123',
+          name: 'Comprador Mix',
+          role: 'buyer'
+        }
+      ]);
+
+      const res = await request(app).get('/api/users/restaurants');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(2);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.every(u => u.role === 'restaurant')).toBe(true);
+    });
+
+    it('devuelve lista vacía cuando no hay restaurantes', async () => {
+      const res = await request(app).get('/api/users/restaurants');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(0);
+      expect(res.body.data).toHaveLength(0);
+    });
+  });
+
+  describe('GET /api/users/:id', () => {
+    it('obtiene un usuario por ID', async () => {
+      const user = await User.create({
+        email: 'byid@test.com',
+        password: 'password123',
+        name: 'Usuario ById',
+        role: 'buyer',
+        phone: '555-1234'
+      });
+
+      const res = await request(app).get(`/api/users/${user._id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.email).toBe('byid@test.com');
+      expect(res.body.data.name).toBe('Usuario ById');
+    });
+
+    it('devuelve 404 para usuario inexistente', async () => {
+      const fakeId = new mongoose.Types.ObjectId();
+      const res = await request(app).get(`/api/users/${fakeId}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe('Usuario no encontrado');
+    });
+  });
 });

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">60% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>15/25</span>
+                <span class='fraction'>20/25</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">36.36% </span>
+                <span class="strong">81.81% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/11</span>
+                <span class='fraction'>9/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">60% </span>
+                <span class="strong">80% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>15/25</span>
+                <span class='fraction'>20/25</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -197,7 +197,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -217,6 +217,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -224,14 +231,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -239,11 +239,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -317,8 +317,8 @@ class ProductRepository {
     return await product.save();
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync findById(id) {
-<span class="cstat-no" title="statement not covered" >    return await Product.findById(id);</span>
+  async findById(id) {
+    return await Product.findById(id);
   }
 &nbsp;
   async findAll(filters = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> {
@@ -344,27 +344,27 @@ class ProductRepository {
     }).sort({ createdAt: -1 });
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync findByCategory(category, available = <span class="branch-0 cbranch-no" title="branch not covered" >true)</span> {
-<span class="cstat-no" title="statement not covered" >    return await Product.find({ </span>
+  async findByCategory(category, available = <span class="branch-0 cbranch-no" title="branch not covered" >true)</span> {
+    return await Product.find({ 
       category, 
       available 
     }).sort({ createdAt: -1 });
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync update(id, updateData) {
-<span class="cstat-no" title="statement not covered" >    return await Product.findByIdAndUpdate(</span>
+  async update(id, updateData) {
+    return await Product.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
     );
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync delete(id) {
-<span class="cstat-no" title="statement not covered" >    return await Product.findByIdAndDelete(id);</span>
+  async delete(id) {
+    return await Product.findByIdAndDelete(id);
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync updateQuantity(id, quantity) {
-<span class="cstat-no" title="statement not covered" >    return await Product.findByIdAndUpdate(</span>
+  async updateQuantity(id, quantity) {
+    return await Product.findByIdAndUpdate(
       id,
       { quantity },
       { new: true }
@@ -433,7 +433,7 @@ module.exports = new ProductRepository();
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T16:50:49.308Z
+                at 2026-06-22T09:23:54.587Z
             </div>
         <script src="../prettify.js"></script>
         <script>

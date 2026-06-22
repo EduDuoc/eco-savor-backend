@@ -180,4 +180,222 @@ describe('Orders Microservice', () => {
       expect(res.body.data.status).toBe('cancelled');
     });
   });
+
+  describe('GET /api/orders/:id', () => {
+    it('obtiene una orden por ID', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'pending',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('user-123', 'buyer');
+      const res = await request(app)
+        .get(`/api/orders/${order._id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items).toHaveLength(1);
+    });
+
+    it('devuelve 404 para orden inexistente', async () => {
+      const fakeId = new mongoose.Types.ObjectId();
+      const token = generateToken('user-123', 'buyer');
+      const res = await request(app)
+        .get(`/api/orders/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe('Orden no encontrada');
+    });
+  });
+
+  describe('PUT /api/orders/:id', () => {
+    it('actualiza una orden (rol restaurant)', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'pending',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .put(`/api/orders/${order._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ customerName: 'Juan Actualizado', notes: 'Sin cebolla' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.customerName).toBe('Juan Actualizado');
+      expect(res.body.data.notes).toBe('Sin cebolla');
+    });
+  });
+
+  describe('POST /api/orders/:id/preparing', () => {
+    it('marca una orden como en preparación', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'confirmed',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .post(`/api/orders/${order._id}/preparing`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('preparing');
+    });
+  });
+
+  describe('POST /api/orders/:id/ready', () => {
+    it('marca una orden como lista para retirar', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'preparing',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .post(`/api/orders/${order._id}/ready`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('ready');
+    });
+  });
+
+  describe('POST /api/orders/:id/complete', () => {
+    it('completa una orden (rol restaurant)', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'ready',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .post(`/api/orders/${order._id}/complete`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('completed');
+    });
+  });
+
+  describe('PUT /api/orders/:id/status', () => {
+    it('actualiza el estado de una orden (rol restaurant)', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'pending',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .put(`/api/orders/${order._id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'confirmed' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('confirmed');
+    });
+
+    it('rechaza estado inválido', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'pending',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .put(`/api/orders/${order._id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'estado_invalido' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('GET /api/orders/restaurants/:restaurantId/orders', () => {
+    it('obtiene las órdenes del restaurante autenticado', async () => {
+      await Order.create([
+        {
+          userId: 'user-123',
+          restaurantId: 'rest-1',
+          restaurantName: 'Mi Restaurante',
+          items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+          totalAmount: 200,
+          status: 'pending',
+          customerName: 'Juan',
+          pickupTime: new Date()
+        },
+        {
+          userId: 'user-456',
+          restaurantId: 'rest-2',
+          restaurantName: 'Otro Restaurante',
+          items: [{ productId: 'prod-2', name: 'Pizza', price: 150, quantity: 1, restaurantId: 'rest-2', restaurantName: 'Otro Restaurante' }],
+          totalAmount: 150,
+          status: 'pending',
+          customerName: 'Ana',
+          pickupTime: new Date()
+        }
+      ]);
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .get('/api/orders/restaurants/rest-1/orders')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].restaurantId).toBe('rest-1');
+    });
+  });
 });

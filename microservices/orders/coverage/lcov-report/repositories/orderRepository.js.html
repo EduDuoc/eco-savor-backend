@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">56.52% </span>
+                <span class="strong">73.91% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/23</span>
+                <span class='fraction'>17/23</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">30% </span>
+                <span class="strong">40% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>3/10</span>
+                <span class='fraction'>4/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">70% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>5/10</span>
+                <span class='fraction'>7/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">56.52% </span>
+                <span class="strong">73.91% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/23</span>
+                <span class='fraction'>17/23</span>
             </div>
         
             
@@ -154,7 +154,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -178,27 +178,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -255,20 +255,20 @@ class OrderRepository {
 <span class="cstat-no" title="statement not covered" >    return await Order.find({ userId }).sort({ createdAt: -1 });</span>
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync findByRestaurant(restaurantId, status = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
-    const query = <span class="cstat-no" title="statement not covered" >{ restaurantId };</span>
-<span class="cstat-no" title="statement not covered" >    if (status) {</span>
+  async findByRestaurant(restaurantId, status = <span class="branch-0 cbranch-no" title="branch not covered" >null)</span> {
+    const query = { restaurantId };
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (status) {
 <span class="cstat-no" title="statement not covered" >      query.status = status;</span>
     }
-<span class="cstat-no" title="statement not covered" >    return await Order.find(query).sort({ createdAt: -1 });</span>
+    return await Order.find(query).sort({ createdAt: -1 });
   }
 &nbsp;
 <span class="fstat-no" title="function not covered" >  as</span>ync findByStatus(status) {
 <span class="cstat-no" title="statement not covered" >    return await Order.find({ status }).sort({ createdAt: -1 });</span>
   }
 &nbsp;
-<span class="fstat-no" title="function not covered" >  as</span>ync update(id, updateData) {
-<span class="cstat-no" title="statement not covered" >    return await Order.findByIdAndUpdate(</span>
+  async update(id, updateData) {
+    return await Order.findByIdAndUpdate(
       id,
       updateData,
       { new: true, runValidators: true }
@@ -304,7 +304,7 @@ module.exports = new OrderRepository();
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-14T17:03:49.380Z
+                at 2026-06-22T09:25:52.133Z
             </div>
         <script src="../prettify.js"></script>
         <script>

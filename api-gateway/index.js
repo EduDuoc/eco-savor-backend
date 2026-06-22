@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 const { SERVICES } = require('./src/services.config');
 const { createProxyHandler } = require('./src/proxyHandler');
+const { usersBreaker, catalogBreaker, ordersBreaker, getBreakerStats } = require('./src/circuitBreaker');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,13 +21,33 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 // === RUTAS PÚBLICAS (van PRIMERO, antes del middleware JWT) ===
-// === RUTA DE REGISTRO (pública, sin auth) ===
+// === RUTA DE REGISTRO (pública, sin auth, protegida con Circuit Breaker) ===
 app.post('/api/auth/register', async (req, res) => {
   try {
-    // Reenviar al microservicio de users
-    const response = await axios.post(`${SERVICES.users}/api/users/register`, req.body);
+    // Usar circuit breaker para proteger la llamada al users-service
+    const response = await usersBreaker.fire({
+      method: 'post',
+      url: `${SERVICES.users}/api/users/register`,
+      data: req.body,
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000,
+    });
+
+    // Si el breaker devolvió fallback (circuito abierto o error), response.data existe
+    if (response.status === 503) {
+      return res.status(503).json(response.data);
+    }
+
     res.json(response.data);
   } catch (error) {
+    // Circuito abierto - opossum lanza error
+    if (error.circuitOpen || error.message?.includes('Breaker is open')) {
+      return res.status(503).json({
+        success: false,
+        error: 'Servicio de usuarios no disponible temporalmente. Intente nuevamente en unos segundos.',
+        circuitOpen: true,
+      });
+    }
     console.error('Error en registro:', error.message);
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || 'Error interno del servidor';
@@ -34,7 +55,7 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// === RUTA DE LOGIN (pública, sin auth) ===
+// === RUTA DE LOGIN (pública, sin auth, protegida con Circuit Breaker) ===
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -43,9 +64,20 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Email y contraseña requeridos' });
     }
 
-    // Consultar al microservicio de users para validar credenciales
-    const response = await axios.post(`${SERVICES.users}/api/users/login`, { email, password });
-    
+    // Consultar al microservicio de users con circuit breaker
+    const response = await usersBreaker.fire({
+      method: 'post',
+      url: `${SERVICES.users}/api/users/login`,
+      data: { email, password },
+      headers: { 'Content-Type': 'application/json' },
+      timeout: 15000,
+    });
+
+    // Si el breaker devolvió fallback (circuito abierto o error)
+    if (response.status === 503) {
+      return res.status(503).json(response.data);
+    }
+
     // Generar token JWT con los datos del usuario
     const user = response.data.data;
     const token = jwt.sign(
@@ -53,8 +85,8 @@ app.post('/api/auth/login', async (req, res) => {
         sub: user.id, 
         email: user.email, 
         role: user.role,
-        name: user.name,  // Nombre de la persona
-        restaurantName: user.restaurantName || user.name  // Nombre del restaurante (fallback al nombre si no es restaurant)
+        name: user.name,
+        restaurantName: user.restaurantName || user.name
       },
       JWT_SECRET,
       { expiresIn: '8h' }
@@ -73,6 +105,14 @@ app.post('/api/auth/login', async (req, res) => {
       }
     });
   } catch (error) {
+    // Circuito abierto
+    if (error.circuitOpen || error.message?.includes('Breaker is open')) {
+      return res.status(503).json({
+        success: false,
+        error: 'Servicio de usuarios no disponible temporalmente. Intente nuevamente en unos segundos.',
+        circuitOpen: true,
+      });
+    }
     console.error('Error en login:', error.message);
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || 'Error interno del servidor';
@@ -95,12 +135,12 @@ app.use('/api/', expressjwt({
     { url: '/api/catalog/categories/([a-zA-Z0-9]+)/products', method: 'GET' },
     { url: '/api/catalog/restaurants/([a-zA-Z0-9]+)/products', method: 'GET' },
     '/health',
+    '/health/circuits',
     '/'
   ] 
 }));
 
 // === MANEJO DE ERRORES DE AUTH Y GLOBAL ===
-// Un solo handler para todos los errores
 app.use((err, req, res, next) => {
   if (err.name === 'UnauthorizedError') {
     return res.status(401).json({ 
@@ -109,7 +149,6 @@ app.use((err, req, res, next) => {
     });
   }
   
-  // Error global
   console.error('Error global:', err.message);
   res.status(500).json({ 
     success: false, 
@@ -117,28 +156,32 @@ app.use((err, req, res, next) => {
   });
 });
 
-// === CONFIGURACIÓN DEL PROXY ===
-// Rutas específicas para catalog con axios (evita bugs de http-proxy-middleware con body)
+// ===========================================================================
+// RUTAS DE CATALOG — protegidas con Circuit Breaker (catalogBreaker)
+// ===========================================================================
 
 // POST products - Crear producto
-app.post('/api/catalog/products', createProxyHandler(SERVICES.catalog, '/products'));
+app.post('/api/catalog/products', createProxyHandler(SERVICES.catalog, '/products', { breaker: catalogBreaker }));
 
 // GET products (público)
-app.get('/api/catalog/products', createProxyHandler(SERVICES.catalog, '/products', { forwardAuth: false }));
+app.get('/api/catalog/products', createProxyHandler(SERVICES.catalog, '/products', { forwardAuth: false, breaker: catalogBreaker }));
 
 // GET product by ID
-app.get('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id', { forwardAuth: false }));
+app.get('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id', { forwardAuth: false, breaker: catalogBreaker }));
 
 // PUT product - Actualizar producto
-app.put('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id'));
+app.put('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id', { breaker: catalogBreaker }));
 
 // DELETE product - Eliminar producto
-app.delete('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id'));
+app.delete('/api/catalog/products/:id', createProxyHandler(SERVICES.catalog, '/products/:id', { breaker: catalogBreaker }));
 
 // GET my-products - Productos del restaurante autenticado
-app.get('/api/catalog/my-products', createProxyHandler(SERVICES.catalog, '/products/my-products'));
+app.get('/api/catalog/my-products', createProxyHandler(SERVICES.catalog, '/products/my-products', { breaker: catalogBreaker }));
 
-// Proxy para users-service
+// ===========================================================================
+// PROXY PARA USERS — http-proxy-middleware (sin circuit breaker por ahora)
+// Pendiente migrar a createProxyHandler para unificar protección
+// ===========================================================================
 app.use('/api/users', createProxyMiddleware({ 
   target: SERVICES.users, 
   changeOrigin: true,
@@ -153,38 +196,44 @@ app.use('/api/users', createProxyMiddleware({
   }
 }));
 
-// === HANDLERS PARA ORDERS (usando createProxyHandler) ===
+// ===========================================================================
+// RUTAS DE ORDERS — protegidas con Circuit Breaker (ordersBreaker)
+// ===========================================================================
+
 // POST /api/orders - Crear orden
-app.post('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders'));
+app.post('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders', { breaker: ordersBreaker }));
 
 // GET /api/orders - Listar órdenes
-app.get('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders'));
+app.get('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders', { breaker: ordersBreaker }));
 
 // GET /api/orders/:id - Obtener orden por ID
-app.get('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id'));
+app.get('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id', { breaker: ordersBreaker }));
 
 // PUT /api/orders/:id - Actualizar orden completa
-app.put('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id'));
+app.put('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id', { breaker: ordersBreaker }));
 
 // PUT /api/orders/:id/status - Actualizar estado
-app.put('/api/orders/:id/status', createProxyHandler(SERVICES.orders, '/api/orders/:id/status'));
+app.put('/api/orders/:id/status', createProxyHandler(SERVICES.orders, '/api/orders/:id/status', { breaker: ordersBreaker }));
 
 // POST /api/orders/:id/confirm - Confirmar orden
-app.post('/api/orders/:id/confirm', createProxyHandler(SERVICES.orders, '/api/orders/:id/confirm'));
+app.post('/api/orders/:id/confirm', createProxyHandler(SERVICES.orders, '/api/orders/:id/confirm', { breaker: ordersBreaker }));
 
 // POST /api/orders/:id/preparing - Marcar como en preparación
-app.post('/api/orders/:id/preparing', createProxyHandler(SERVICES.orders, '/api/orders/:id/preparing'));
+app.post('/api/orders/:id/preparing', createProxyHandler(SERVICES.orders, '/api/orders/:id/preparing', { breaker: ordersBreaker }));
 
 // POST /api/orders/:id/ready - Marcar como lista
-app.post('/api/orders/:id/ready', createProxyHandler(SERVICES.orders, '/api/orders/:id/ready'));
+app.post('/api/orders/:id/ready', createProxyHandler(SERVICES.orders, '/api/orders/:id/ready', { breaker: ordersBreaker }));
 
 // POST /api/orders/:id/complete - Completar orden
-app.post('/api/orders/:id/complete', createProxyHandler(SERVICES.orders, '/api/orders/:id/complete'));
+app.post('/api/orders/:id/complete', createProxyHandler(SERVICES.orders, '/api/orders/:id/complete', { breaker: ordersBreaker }));
 
 // POST /api/orders/:id/cancel - Cancelar orden
-app.post('/api/orders/:id/cancel', createProxyHandler(SERVICES.orders, '/api/orders/:id/cancel'));
+app.post('/api/orders/:id/cancel', createProxyHandler(SERVICES.orders, '/api/orders/:id/cancel', { breaker: ordersBreaker }));
 
-// Proxy para restaurants (alias público para listar restaurantes)
+// ===========================================================================
+// PROXY PARA RESTAURANTS — http-proxy-middleware (sin circuit breaker)
+// Alias público para listar restaurantes
+// ===========================================================================
 app.use('/api/restaurants', createProxyMiddleware({ 
   target: SERVICES.users, 
   changeOrigin: true,
@@ -193,12 +242,27 @@ app.use('/api/restaurants', createProxyMiddleware({
   }
 }));
 
-// Health check
+// ===========================================================================
+// HEALTH CHECKS
+// ===========================================================================
+
+// Health check básico
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     service: 'API Gateway',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    circuits: getBreakerStats(),
+  });
+});
+
+// Health check detallado de circuit breakers
+app.get('/health/circuits', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    service: 'API Gateway - Circuit Breakers',
+    timestamp: new Date().toISOString(),
+    circuits: getBreakerStats(),
   });
 });
 
@@ -211,7 +275,8 @@ app.get('/', (req, res) => {
       users: '/api/users',
       catalog: '/api/catalog',
       orders: '/api/orders',
-      health: '/health'
+      health: '/health',
+      circuits: '/health/circuits',
     }
   });
 });
@@ -223,4 +288,5 @@ app.listen(PORT, () => {
   console.log(`   Users Service: ${SERVICES.users}`);
   console.log(`   Catalog Service: ${SERVICES.catalog}`);
   console.log(`   Orders Service: ${SERVICES.orders}`);
+  console.log(`   Circuit Breakers: ACTIVOS (users, catalog, orders)`);
 });

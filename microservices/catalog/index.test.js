@@ -307,4 +307,218 @@ describe('Catalog Microservice', () => {
       expect(res.body.success).toBe(false);
     });
   });
+
+  describe('GET /products/:id', () => {
+    it('obtiene un producto por ID', async () => {
+      const product = await Product.create({
+        name: 'Producto ById',
+        description: 'Descripción del producto',
+        price: 100,
+        discountPrice: 80,
+        quantity: 10,
+        category: 'comida caliente',
+        restaurantId: 'rest-123',
+        restaurantName: 'Mi Restaurante',
+        available: true
+      });
+
+      const res = await request(app).get(`/products/${product._id}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.name).toBe('Producto ById');
+    });
+
+    it('devuelve 404 para producto inexistente', async () => {
+      const fakeId = new mongoose.Types.ObjectId();
+      const res = await request(app).get(`/products/${fakeId}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toBe('Producto no encontrado');
+    });
+  });
+
+  describe('PUT /products/:id', () => {
+    it('actualiza un producto siendo el dueño', async () => {
+      const product = await Product.create({
+        name: 'Producto Update',
+        description: 'Descripción original',
+        price: 100,
+        discountPrice: 80,
+        quantity: 10,
+        category: 'comida caliente',
+        restaurantId: 'rest-123',
+        restaurantName: 'Mi Restaurante',
+        available: true
+      });
+
+      const token = generateToken('rest-123', 'restaurant');
+      const res = await request(app)
+        .put(`/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Producto Actualizado', price: 120, discountPrice: 90 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.name).toBe('Producto Actualizado');
+    });
+
+    it('rechaza actualización sin ser dueño (403)', async () => {
+      const product = await Product.create({
+        name: 'Producto Ajeno',
+        description: 'Descripción',
+        price: 100,
+        discountPrice: 80,
+        quantity: 10,
+        category: 'comida caliente',
+        restaurantId: 'rest-123',
+        restaurantName: 'Mi Restaurante',
+        available: true
+      });
+
+      const token = generateToken('rest-999', 'restaurant');
+      const res = await request(app)
+        .put(`/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Hackeado' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('DELETE /products/:id', () => {
+    it('elimina un producto siendo el dueño', async () => {
+      const product = await Product.create({
+        name: 'Producto Delete',
+        description: 'Descripción',
+        price: 100,
+        discountPrice: 80,
+        quantity: 10,
+        category: 'comida caliente',
+        restaurantId: 'rest-123',
+        restaurantName: 'Mi Restaurante',
+        available: true
+      });
+
+      const token = generateToken('rest-123', 'restaurant');
+      const res = await request(app)
+        .delete(`/products/${product._id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Producto eliminado exitosamente');
+    });
+  });
+
+  describe('GET /products/restaurants/:restaurantId/products', () => {
+    it('obtiene productos de un restaurante específico', async () => {
+      await Product.create([
+        {
+          name: 'Producto Rest1 A',
+          description: 'Desc A',
+          price: 100,
+          discountPrice: 80,
+          quantity: 10,
+          category: 'comida caliente',
+          restaurantId: 'rest-1',
+          restaurantName: 'Restaurante 1',
+          available: true
+        },
+        {
+          name: 'Producto Rest1 B',
+          description: 'Desc B',
+          price: 50,
+          discountPrice: 40,
+          quantity: 5,
+          category: 'bebidas',
+          restaurantId: 'rest-1',
+          restaurantName: 'Restaurante 1',
+          available: true
+        },
+        {
+          name: 'Producto Rest2',
+          description: 'Desc C',
+          price: 200,
+          discountPrice: 150,
+          quantity: 3,
+          category: 'postres',
+          restaurantId: 'rest-2',
+          restaurantName: 'Restaurante 2',
+          available: true
+        }
+      ]);
+
+      const res = await request(app).get('/products/restaurants/rest-1/products');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(2);
+      expect(res.body.data.every(p => p.restaurantId === 'rest-1')).toBe(true);
+    });
+  });
+
+  describe('GET /products/categories/:category/products', () => {
+    it('obtiene productos por categoría', async () => {
+      await Product.create([
+        {
+          name: 'Coca Cola',
+          description: 'Bebida gaseosa',
+          price: 50,
+          discountPrice: 40,
+          quantity: 20,
+          category: 'bebidas',
+          restaurantId: 'rest-1',
+          restaurantName: 'Restaurante 1',
+          available: true
+        },
+        {
+          name: 'Hamburguesa',
+          description: 'Comida caliente',
+          price: 100,
+          discountPrice: 80,
+          quantity: 10,
+          category: 'comida caliente',
+          restaurantId: 'rest-1',
+          restaurantName: 'Restaurante 1',
+          available: true
+        }
+      ]);
+
+      const res = await request(app).get('/products/categories/bebidas/products');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.count).toBe(1);
+      expect(res.body.data[0].category).toBe('bebidas');
+    });
+  });
+
+  describe('PUT /products/:id/stock', () => {
+    it('actualiza el stock de un producto siendo el dueño', async () => {
+      const product = await Product.create({
+        name: 'Producto Stock',
+        description: 'Descripción',
+        price: 100,
+        discountPrice: 80,
+        quantity: 10,
+        category: 'comida caliente',
+        restaurantId: 'rest-123',
+        restaurantName: 'Mi Restaurante',
+        available: true
+      });
+
+      const token = generateToken('rest-123', 'restaurant');
+      const res = await request(app)
+        .put(`/products/${product._id}/stock`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ quantity: 25 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.quantity).toBe(25);
+    });
+  });
 });

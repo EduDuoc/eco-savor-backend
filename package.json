@@ -5,6 +5,13 @@
     "http-proxy-middleware": "^3.0.5",
     "morgan": "^1.10.1"
   },
+  "scripts": {
+    "test": "cd microservices/users && npm test && cd ../catalog && npm test && cd ../orders && npm test && cd ../../api-gateway && npm test",
+    "test:users": "cd microservices/users && npm test",
+    "test:catalog": "cd microservices/catalog && npm test",
+    "test:orders": "cd microservices/orders && npm test",
+    "test:gateway": "cd api-gateway && npm test"
+  },
   "devDependencies": {
     "nodemon": "^3.1.14"
   }

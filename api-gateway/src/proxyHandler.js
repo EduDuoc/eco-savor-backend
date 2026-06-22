@@ -1,7 +1,8 @@
 const axios = require('axios');
 
 /**
- * Crea un handler de proxy reutilizable para rutas de Express
+ * Crea un handler de proxy reutilizable para rutas de Express.
+ * Soporta Circuit Breaker vía opossum cuando se pasa la opción `breaker`.
  * 
  * @param {string} serviceUrl - URL base del servicio (ej: http://localhost:3002)
  * @param {string} targetPath - Path destino en el microservicio (ej: /products)
@@ -10,6 +11,7 @@ const axios = require('axios');
  * @param {boolean} options.forwardQuery - Si true, forwardea query params en GET (default: true)
  * @param {number} options.timeout - Timeout en ms (default: 30000)
  * @param {string} options.methodOverride - Override del método HTTP (opcional)
+ * @param {CircuitBreaker} options.breaker - Instancia de opossum CircuitBreaker (opcional)
  * @returns {Function} Handler de Express
  */
 function createProxyHandler(serviceUrl, targetPath, options = {}) {
@@ -17,7 +19,8 @@ function createProxyHandler(serviceUrl, targetPath, options = {}) {
     forwardAuth = true,
     forwardQuery = true,
     timeout = 30000,
-    methodOverride = null
+    methodOverride = null,
+    breaker = null
   } = options;
 
   return async (req, res) => {
@@ -37,7 +40,6 @@ function createProxyHandler(serviceUrl, targetPath, options = {}) {
       }
 
       // Construir URL completa resolviendo route params dinámicamente
-      // Reemplaza :param en targetPath con valores de req.params
       let resolvedPath = targetPath;
       for (const [param, value] of Object.entries(req.params)) {
         resolvedPath = resolvedPath.replace(`:${param}`, value);
@@ -48,47 +50,88 @@ function createProxyHandler(serviceUrl, targetPath, options = {}) {
       // Determinar método HTTP
       const method = methodOverride || req.method.toLowerCase();
 
-      // Configurar request según método HTTP
-      let axiosConfig;
-      if (method === 'get') {
-        // GET: forwardear query params si está habilitado
-        axiosConfig = {
-          headers,
-          timeout,
-          ...(forwardQuery && { params: req.query })
-        };
-        const response = await axios.get(url, axiosConfig);
-        res.json(response.data);
-      } else if (method === 'post') {
-        // POST: enviar body
-        axiosConfig = { headers, timeout };
-        const response = await axios.post(url, req.body, axiosConfig);
-        res.status(response.status).json(response.data);
-      } else if (method === 'put') {
-        // PUT: enviar body
-        axiosConfig = { headers, timeout };
-        const response = await axios.put(url, req.body, axiosConfig);
-        res.status(response.status).json(response.data);
-      } else if (method === 'delete') {
-        // DELETE: puede llevar body en algunos casos
-        axiosConfig = { headers, timeout, data: req.body };
-        const response = await axios.delete(url, axiosConfig);
-        res.status(response.status).json(response.data);
+      // Construir configuración del request
+      const requestConfig = {
+        method,
+        url,
+        headers,
+        timeout,
+        ...(dataForMethod(method, req.body)),
+        ...(method === 'get' && forwardQuery && { params: req.query })
+      };
+
+      // Si hay circuit breaker, usarlo; si no, axios directo (backward compat)
+      let response;
+      if (breaker) {
+        response = await breaker.fire(requestConfig);
       } else {
-        // Método no soportado
-        return res.status(405).json({ 
-          success: false, 
-          error: `Método ${method} no soportado` 
+        response = await executeRequest(method, url, headers, timeout, forwardQuery, req);
+      }
+
+      // Manejar respuesta del breaker (puede ser respuesta real o fallback)
+      if (response.status >= 400 || !response.status) {
+        return res.status(response.status || 500).json(response.data);
+      }
+
+      res.status(response.status).json(response.data);
+    } catch (error) {
+      // Si el circuito está abierto, opossum tira error con este mensaje
+      if (error.circuitOpen) {
+        return res.status(503).json({
+          success: false,
+          error: 'Servicio no disponible temporalmente. Intente nuevamente en unos segundos.',
+          circuitOpen: true,
         });
       }
-    } catch (error) {
-      // Manejo de errores simplificado - el errorHandler helper se usa en el caller
-      console.error(`Proxy error (${method} ${targetPath}):`, error.message);
+
+      console.error(`Proxy error (${req.method} ${targetPath}):`, error.message);
       const status = error.response?.status || 500;
       const message = error.response?.data?.error || 'Error en el servicio';
       res.status(status).json({ success: false, error: message });
     }
   };
+}
+
+/**
+ * Ejecuta un request HTTP directamente con axios (sin circuit breaker).
+ * Usado como fallback cuando no se provee breaker.
+ */
+async function executeRequest(method, url, headers, timeout, forwardQuery, req) {
+  const axiosConfig = { headers, timeout };
+  if (forwardQuery && method === 'get') {
+    axiosConfig.params = req.query;
+  }
+
+  switch (method) {
+    case 'get':
+      return axios.get(url, axiosConfig);
+    case 'post':
+      return axios.post(url, req.body, axiosConfig);
+    case 'put':
+      return axios.put(url, req.body, axiosConfig);
+    case 'delete':
+      return axios.delete(url, { ...axiosConfig, data: req.body });
+    default:
+      throw new Error(`Método ${method} no soportado`);
+  }
+}
+
+/**
+ * Determina qué datos enviar según el método HTTP.
+ * GET no lleva body; POST/PUT llevan data; DELETE puede llevar body en data.
+ */
+function dataForMethod(method, body) {
+  switch (method.toLowerCase()) {
+    case 'get':
+      return {};
+    case 'post':
+    case 'put':
+      return { data: body };
+    case 'delete':
+      return { data: body || undefined };
+    default:
+      return {};
+  }
 }
 
 module.exports = { createProxyHandler };
