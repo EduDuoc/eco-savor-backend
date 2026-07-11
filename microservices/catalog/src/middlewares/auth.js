@@ -12,6 +12,12 @@ const PUBLIC_ROUTES = [
   { path: '/products/categories', exact: false },  // GET /products/categories/:id
 ];
 
+// GET /products/:id (un solo segmento, con formato de ObjectId de Mongo) es público:
+// cualquiera puede ver el detalle de un producto. No debe confundirse con
+// /products/my-products, /products/:id/stock, etc. (más de un segmento o no-ObjectId).
+const PRODUCT_BY_ID_REGEX = /^\/products\/[0-9a-fA-F]{24}$/;
+const isProductByIdRoute = (path, method) => method === 'GET' && PRODUCT_BY_ID_REGEX.test(path);
+
 /**
  * Middleware de autenticación JWT para Catalog Service
  * Verifica el token JWT O la INTERNAL_API_KEY para requests entre servicios
@@ -30,8 +36,8 @@ const authMiddleware = (req, res, next) => {
       // Prefijo para sub-rutas
       return req.path.startsWith(path + '/') && req.method === 'GET';
     }
-  });
-  
+  }) || isProductByIdRoute(req.path, req.method);
+
   if (isPublicRoute) {
     return next();
   }

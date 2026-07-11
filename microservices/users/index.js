@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./src/config/database');
 const userRoutes = require('./src/routes/userRoutes');
 const { authMiddleware } = require('./src/middlewares/auth');
+const { notFoundHandler, errorHandler } = require('./src/middlewares/errorHandlers');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,21 +34,10 @@ app.get('/', (req, res) => {
 });
 
 // Ruta 404
-app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    error: 'Ruta no encontrada' 
-  });
-});
+app.use(notFoundHandler);
 
 // Manejo de errores global
-app.use((err, req, res, next) => {
-  console.error('Error global:', err);
-  res.status(500).json({ 
-    success: false, 
-    error: 'Error interno del servidor' 
-  });
-});
+app.use(errorHandler);
 
 // Iniciar servidor
 app.listen(PORT, () => {

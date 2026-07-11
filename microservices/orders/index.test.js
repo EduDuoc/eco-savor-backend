@@ -6,10 +6,16 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const Order = require('./src/models/orderModel');
 const orderRoutes = require('./src/routes/orderRoutes');
+const stockService = require('./src/services/stockService');
 
-// Mock del stockService para evitar llamadas HTTP al catalog-service en tests
+// Mock del stockService para evitar llamadas HTTP al catalog-service en tests.
+// Por defecto, validateStock hace "pass-through" de los items recibidos
+// (simula que el catálogo confirma exactamente esos datos). Tests
+// específicos pueden sobreescribir esto con mockResolvedValueOnce para
+// simular que el catálogo devuelve un precio distinto al enviado por el
+// cliente (ver bug de manipulación de precio).
 jest.mock('./src/services/stockService', () => ({
-  validateStock: jest.fn().mockResolvedValue({ valid: true }),
+  validateStock: jest.fn().mockImplementation(async (items) => items),
   deductStock: jest.fn().mockResolvedValue({ success: true }),
   restoreStock: jest.fn().mockResolvedValue({ success: true })
 }));
@@ -61,6 +67,7 @@ afterAll(async () => {
 
 afterEach(async () => {
   await Order.deleteMany({});
+  jest.clearAllMocks();
 });
 
 describe('Orders Microservice', () => {
@@ -91,6 +98,48 @@ describe('Orders Microservice', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.success).toBe(true);
+    });
+
+    it('ignora el precio/total manipulado por el cliente y usa el precio real del catálogo', async () => {
+      // Simulamos que el catálogo (vía stockService.validateStock) devuelve
+      // el precio REAL del producto, distinto al que envía el cliente
+      stockService.validateStock.mockResolvedValueOnce([
+        {
+          productId: 'prod-1',
+          name: 'Hamburguesa',
+          price: 100, // precio real en el catálogo
+          quantity: 2,
+          restaurantId: 'rest-1',
+          restaurantName: 'Mi Restaurante'
+        }
+      ]);
+
+      const orderData = {
+        items: [
+          {
+            productId: 'prod-1',
+            name: 'Hamburguesa',
+            price: 1, // precio manipulado por el cliente
+            quantity: 2,
+            restaurantId: 'rest-1',
+            restaurantName: 'Mi Restaurante'
+          }
+        ],
+        totalAmount: 2, // total manipulado por el cliente
+        customerName: 'Atacante',
+        pickupTime: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+      };
+
+      const token = generateToken('user-999', 'buyer');
+      const res = await request(app)
+        .post('/api/orders')
+        .set('Authorization', `Bearer ${token}`)
+        .send(orderData);
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.items[0].price).toBe(100);
+      expect(res.body.data.totalAmount).toBe(200);
     });
 
     it('rechaza orden sin items', async () => {
@@ -155,6 +204,57 @@ describe('Orders Microservice', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     });
+
+    it('no permite confirmar dos veces (condición de carrera) ni descontar stock más de una vez', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'pending',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+
+      const [res1, res2] = await Promise.all([
+        request(app).post(`/api/orders/${order._id}/confirm`).set('Authorization', `Bearer ${token}`),
+        request(app).post(`/api/orders/${order._id}/confirm`).set('Authorization', `Bearer ${token}`)
+      ]);
+
+      const statuses = [res1.status, res2.status].sort();
+      expect(statuses).toEqual([200, 409]);
+      expect(stockService.deductStock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('PUT /api/orders/:id/status (bypass de confirm)', () => {
+    it('descuenta stock y marca stockDeducted al pasar a confirmed vía updateStatus', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'pending',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('rest-1', 'restaurant');
+      const res = await request(app)
+        .put(`/api/orders/${order._id}/status`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'confirmed' });
+
+      expect(res.status).toBe(200);
+      expect(stockService.deductStock).toHaveBeenCalledTimes(1);
+
+      const updated = await Order.findById(order._id);
+      expect(updated.stockDeducted).toBe(true);
+    });
   });
 
   describe('POST /api/orders/:id/cancel', () => {
@@ -178,6 +278,71 @@ describe('Orders Microservice', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.status).toBe('cancelled');
+    });
+
+    it('no restaura stock si nunca fue descontado, aunque el estado sea confirmed', async () => {
+      // Orden creada directamente en estado 'confirmed' sin pasar por confirm()
+      // (stockDeducted queda en su default: false)
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'confirmed',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('user-123', 'buyer');
+      const res = await request(app)
+        .post(`/api/orders/${order._id}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(stockService.restoreStock).not.toHaveBeenCalled();
+    });
+
+    it('rechaza cancelar una orden ya completada', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'completed',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('user-123', 'buyer');
+      const res = await request(app)
+        .post(`/api/orders/${order._id}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rechaza cancelar una orden ya cancelada', async () => {
+      const order = await Order.create({
+        userId: 'user-123',
+        restaurantId: 'rest-1',
+        restaurantName: 'Mi Restaurante',
+        items: [{ productId: 'prod-1', name: 'Hamburguesa', price: 100, quantity: 2, restaurantId: 'rest-1', restaurantName: 'Mi Restaurante' }],
+        totalAmount: 200,
+        status: 'cancelled',
+        customerName: 'Juan',
+        pickupTime: new Date()
+      });
+
+      const token = generateToken('user-123', 'buyer');
+      const res = await request(app)
+        .post(`/api/orders/${order._id}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
     });
   });
 

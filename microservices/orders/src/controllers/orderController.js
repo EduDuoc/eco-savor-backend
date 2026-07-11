@@ -175,7 +175,7 @@ exports.updateOrderStatus = async (req, res) => {
     }
     
     const order = await orderService.updateStatus(req.params.id, status);
-    
+
     res.json({
       success: true,
       message: `Orden ${status}`,
@@ -183,11 +183,14 @@ exports.updateOrderStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar estado:', error);
-    
+
+    if (error.isConflict) {
+      return res.status(409).json({ success: false, error: error.message });
+    }
     if (error.message.includes('Estado') || error.message === 'Orden no encontrada') {
       return res.status(400).json({ success: false, error: error.message });
     }
-    
+
     res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };
@@ -199,7 +202,7 @@ exports.updateOrderStatus = async (req, res) => {
 exports.confirmOrder = async (req, res) => {
   try {
     const order = await orderService.confirm(req.params.id);
-    
+
     res.json({
       success: true,
       message: 'Orden confirmada',
@@ -207,11 +210,14 @@ exports.confirmOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al confirmar orden:', error);
-    
+
     if (error.message === 'Orden no encontrada') {
       return res.status(404).json({ success: false, error: error.message });
     }
-    
+    if (error.isConflict) {
+      return res.status(409).json({ success: false, error: error.message });
+    }
+
     res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };
@@ -319,7 +325,7 @@ exports.cancelOrder = async (req, res) => {
     }
     
     const cancelledOrder = await orderService.cancel(orderId);
-    
+
     res.json({
       success: true,
       message: 'Orden cancelada',
@@ -327,11 +333,14 @@ exports.cancelOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al cancelar orden:', error);
-    
+
     if (error.message === 'Orden no encontrada') {
       return res.status(404).json({ success: false, error: error.message });
     }
-    
+    if (error.isConflict) {
+      return res.status(409).json({ success: false, error: error.message });
+    }
+
     res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };

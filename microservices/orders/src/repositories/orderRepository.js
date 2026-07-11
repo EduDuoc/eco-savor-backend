@@ -62,6 +62,35 @@ class OrderRepository {
     );
   }
 
+  /**
+   * Transición atómica pending -> confirmed.
+   * Usa findOneAndUpdate condicionado por status para evitar condiciones de
+   * carrera: si dos requests intentan confirmar al mismo tiempo, solo una
+   * puede ganar la actualización (la otra recibe null).
+   * @param {string} id
+   * @returns {Promise<Order|null>} La orden confirmada, o null si no existe
+   *   o ya no estaba en 'pending'.
+   */
+  async confirmPending(id) {
+    return await Order.findOneAndUpdate(
+      { _id: id, status: 'pending' },
+      { status: 'confirmed' },
+      { new: true }
+    );
+  }
+
+  /**
+   * Marca la orden como que su stock ya fue descontado exitosamente.
+   * @param {string} id
+   */
+  async markStockDeducted(id) {
+    return await Order.findByIdAndUpdate(
+      id,
+      { stockDeducted: true },
+      { new: true }
+    );
+  }
+
   async cancel(id) {
     return await Order.findByIdAndUpdate(
       id,

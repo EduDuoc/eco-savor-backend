@@ -106,11 +106,13 @@ class ProductRepository {
    * @returns {Promise} Producto actualizado
    */
   async restoreStock(id, quantity) {
+    // Solo restauramos la cantidad. NO tocamos `available`: si el restaurante
+    // deshabilitó el producto intencionalmente, un rollback/cancelación de
+    // orden no debe reactivarlo automáticamente.
     const result = await Product.findByIdAndUpdate(
       id,
-      { 
-        $inc: { quantity: quantity },
-        available: true  // Asegurar que esté disponible
+      {
+        $inc: { quantity: quantity }
       },
       { new: true }
     );

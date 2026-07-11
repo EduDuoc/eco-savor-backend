@@ -10,7 +10,7 @@ class ProductFactory {
       throw new Error('Nombre y descripción son requeridos');
     }
 
-    if (!data.price || data.price <= 0) {
+    if (isNaN(Number(data.price)) || Number(data.price) <= 0) {
       throw new Error('El precio debe ser mayor a 0');
     }
 

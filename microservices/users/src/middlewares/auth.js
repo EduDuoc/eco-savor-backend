@@ -4,7 +4,10 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'ecosaver_dev_secret_change_in_prod';
 
 // Whitelist de rutas públicas (sin autenticación)
-const PUBLIC_ROUTES = ['/', '/api/users/register', '/api/users/login', '/api/users/restaurants'];
+// NOTA: '/' se compara con match exacto (no con startsWith), porque
+// req.path.startsWith('/') es true para CUALQUIER ruta y dejaría todo el
+// servicio sin autenticación.
+const PUBLIC_ROUTES = ['/api/users/register', '/api/users/login', '/api/users/restaurants'];
 
 /**
  * Middleware de autenticación JWT para Users Service
@@ -16,7 +19,7 @@ const PUBLIC_ROUTES = ['/', '/api/users/register', '/api/users/login', '/api/use
  */
 const authMiddleware = (req, res, next) => {
   // Si la ruta es pública, continuar sin autenticar
-  if (PUBLIC_ROUTES.some(route => req.path.startsWith(route))) {
+  if (req.path === '/' || PUBLIC_ROUTES.some(route => req.path.startsWith(route))) {
     return next();
   }
 

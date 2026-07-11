@@ -4,6 +4,19 @@ const productService = require('../services/productService');
  * Controller: Maneja requests HTTP de productos
  */
 
+/**
+ * Verifica que el request incluya la API key interna correcta
+ * (usada por endpoints internos como deductStock/restoreStock,
+ * accesibles solo desde el orders service)
+ * @param {Object} req - Request de Express
+ * @returns {boolean} true si la API key es válida
+ */
+function verifyInternalApiKey(req) {
+  const apiKey = req.headers['x-internal-api-key'];
+  const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_change_in_prod';
+  return apiKey === INTERNAL_API_KEY;
+}
+
 exports.createProduct = async (req, res) => {
   try {
     // IMPORTANTE: restaurantId y restaurantName DEBEN venir del JWT, no del body
@@ -202,10 +215,7 @@ exports.markAsUnavailable = async (req, res) => {
 exports.deductStock = async (req, res) => {
   try {
     // Verificar API key interna
-    const apiKey = req.headers['x-internal-api-key'];
-    const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_change_in_prod';
-    
-    if (apiKey !== INTERNAL_API_KEY) {
+    if (!verifyInternalApiKey(req)) {
       return res.status(401).json({
         success: false,
         error: 'No autorizado. API key interna requerida.'
@@ -255,10 +265,7 @@ exports.deductStock = async (req, res) => {
 exports.restoreStock = async (req, res) => {
   try {
     // Verificar API key interna
-    const apiKey = req.headers['x-internal-api-key'];
-    const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_change_in_prod';
-    
-    if (apiKey !== INTERNAL_API_KEY) {
+    if (!verifyInternalApiKey(req)) {
       return res.status(401).json({
         success: false,
         error: 'No autorizado. API key interna requerida.'

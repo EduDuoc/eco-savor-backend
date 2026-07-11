@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1782120419884" clover="3.2.0">
-  <project timestamp="1782120419884" name="All files">
+<coverage generated="1782166412098" clover="3.2.0">
+  <project timestamp="1782166412099" name="All files">
     <metrics statements="51" coveredstatements="22" conditionals="33" coveredconditionals="11" methods="11" coveredmethods="2" elements="95" coveredelements="35" complexity="0" loc="51" ncloc="51" packages="1" files="3" classes="3"/>
     <file name="circuitBreaker.js" path="C:\Users\delga\OneDrive\Escritorio\Repositorio\eco-savor-backend\api-gateway\src\circuitBreaker.js">
       <metrics statements="44" coveredstatements="15" conditionals="22" coveredconditionals="0" methods="10" coveredmethods="1"/>

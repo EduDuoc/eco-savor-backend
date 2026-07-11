@@ -10,8 +10,13 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || 'ecosaver_internal_key_
 class StockService {
 
   /**
-   * Valida que todos los items tengan stock suficiente (EN PARALELO)
+   * Valida que todos los items tengan stock suficiente (EN PARALELO) y
+   * devuelve los items "saneados" con los datos REALES del catálogo
+   * (precio, nombre, restaurante). Nunca se confía en lo que envía el
+   * cliente para price/name/restaurantId/restaurantName: siempre se
+   * sobreescriben con la respuesta de catalog-service.
    * @param {Array} items - Array de items con productId y quantity
+   * @returns {Promise<Array>} Items validados con precio real del catálogo
    * @throws {Error} Si no hay stock suficiente o producto no disponible
    */
   async validateStock(items) {
@@ -28,56 +33,76 @@ class StockService {
             }
           }
         );
-        
+
         const product = response.data.data;
 
         if (!product) {
           return {
-            productId: item.productId,
-            productName: 'Producto no encontrado',
-            requested: item.quantity,
-            available: 0,
-            reason: 'Producto no encontrado'
+            error: {
+              productId: item.productId,
+              productName: 'Producto no encontrado',
+              requested: item.quantity,
+              available: 0,
+              reason: 'Producto no encontrado'
+            }
           };
         }
 
         // Verificar disponibilidad
         if (!product.available) {
           return {
-            productId: item.productId,
-            productName: product.name,
-            requested: item.quantity,
-            available: 0,
-            reason: 'Producto no disponible'
+            error: {
+              productId: item.productId,
+              productName: product.name,
+              requested: item.quantity,
+              available: 0,
+              reason: 'Producto no disponible'
+            }
           };
         }
 
         // Verificar stock suficiente
         if (product.quantity < item.quantity) {
           return {
-            productId: item.productId,
-            productName: product.name,
-            requested: item.quantity,
-            available: product.quantity
+            error: {
+              productId: item.productId,
+              productName: product.name,
+              requested: item.quantity,
+              available: product.quantity
+            }
           };
         }
-        
-        // Stock válido
-        return null;
+
+        // Stock válido: usar SIEMPRE los datos reales del catálogo,
+        // ignorando price/name/restaurantId/restaurantName enviados por el cliente
+        return {
+          validItem: {
+            productId: item.productId,
+            name: product.name,
+            price: product.discountPrice,
+            quantity: item.quantity,
+            restaurantId: product.restaurantId,
+            restaurantName: product.restaurantName
+          }
+        };
       } catch (error) {
         if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
           return {
-            productId: item.productId,
-            requested: item.quantity,
-            available: 0,
-            reason: 'Timeout al conectar con el catálogo'
+            error: {
+              productId: item.productId,
+              requested: item.quantity,
+              available: 0,
+              reason: 'Timeout al conectar con el catálogo'
+            }
           };
         } else if (error.response?.status === 404) {
           return {
-            productId: item.productId,
-            requested: item.quantity,
-            available: 0,
-            reason: 'Producto no encontrado'
+            error: {
+              productId: item.productId,
+              requested: item.quantity,
+              available: 0,
+              reason: 'Producto no encontrado'
+            }
           };
         } else {
           // Re-lanzar errores inesperados
@@ -85,9 +110,10 @@ class StockService {
         }
       }
     }));
-    
-    // Filtrar solo los errores (null = stock válido)
-    const stockErrors = validationResults.filter(result => result !== null);
+
+    const stockErrors = validationResults
+      .filter(result => result.error)
+      .map(result => result.error);
 
     if (stockErrors.length > 0) {
       const error = new Error('Stock insuficiente para algunos productos');
@@ -95,6 +121,8 @@ class StockService {
       error.details = stockErrors;
       throw error;
     }
+
+    return validationResults.map(result => result.validItem);
   }
 
   /**

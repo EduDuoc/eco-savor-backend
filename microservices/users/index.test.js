@@ -3,17 +3,31 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 const request = require('supertest');
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const User = require('./src/models/userModel');
 const userRoutes = require('./src/routes/userRoutes');
 const connectDB = require('./src/config/database');
+const { authMiddleware } = require('./src/middlewares/auth');
 
 let mongoServer;
 const app = express();
+const JWT_SECRET = 'ecosaver_dev_secret_change_in_prod';
 
-// Setup similar al index.js
+// Helper para generar tokens JWT válidos
+const generateToken = (userId, role = 'buyer') => {
+  return jwt.sign(
+    { sub: userId, email: 'test@test.com', role },
+    JWT_SECRET,
+    { expiresIn: '8h' }
+  );
+};
+
+// Setup similar al index.js (incluye el middleware de auth real para poder
+// probar la verificación de ownership de las rutas /api/users/:id)
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(authMiddleware);
 app.use('/api/users', userRoutes);
 
 beforeAll(async () => {
@@ -184,7 +198,7 @@ describe('Users Microservice', () => {
   });
 
   describe('GET /api/users/:id', () => {
-    it('obtiene un usuario por ID', async () => {
+    it('obtiene un usuario por ID siendo el propio dueño', async () => {
       const user = await User.create({
         email: 'byid@test.com',
         password: 'password123',
@@ -193,7 +207,10 @@ describe('Users Microservice', () => {
         phone: '555-1234'
       });
 
-      const res = await request(app).get(`/api/users/${user._id}`);
+      const token = generateToken(user._id.toString(), 'buyer');
+      const res = await request(app)
+        .get(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -201,13 +218,114 @@ describe('Users Microservice', () => {
       expect(res.body.data.name).toBe('Usuario ById');
     });
 
-    it('devuelve 404 para usuario inexistente', async () => {
+    it('devuelve 404 para usuario inexistente (solicitado por sí mismo)', async () => {
       const fakeId = new mongoose.Types.ObjectId();
-      const res = await request(app).get(`/api/users/${fakeId}`);
+      const token = generateToken(fakeId.toString(), 'buyer');
+      const res = await request(app)
+        .get(`/api/users/${fakeId}`)
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);
       expect(res.body.error).toBe('Usuario no encontrado');
+    });
+
+    it('rechaza obtener el perfil de otro usuario (IDOR -> 403)', async () => {
+      const victim = await User.create({
+        email: 'victima@test.com',
+        password: 'password123',
+        name: 'Usuario Víctima',
+        role: 'buyer'
+      });
+
+      const attackerToken = generateToken(new mongoose.Types.ObjectId().toString(), 'buyer');
+      const res = await request(app)
+        .get(`/api/users/${victim._id}`)
+        .set('Authorization', `Bearer ${attackerToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('PUT /api/users/:id', () => {
+    it('permite actualizar el propio perfil', async () => {
+      const user = await User.create({
+        email: 'update-self@test.com',
+        password: 'password123',
+        name: 'Usuario Original',
+        role: 'buyer'
+      });
+
+      const token = generateToken(user._id.toString(), 'buyer');
+      const res = await request(app)
+        .put(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ name: 'Usuario Actualizado' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.name).toBe('Usuario Actualizado');
+    });
+
+    it('rechaza actualizar el perfil de otro usuario (IDOR -> 403)', async () => {
+      const victim = await User.create({
+        email: 'victima-update@test.com',
+        password: 'password123',
+        name: 'Usuario Víctima',
+        role: 'buyer'
+      });
+
+      const attackerToken = generateToken(new mongoose.Types.ObjectId().toString(), 'buyer');
+      const res = await request(app)
+        .put(`/api/users/${victim._id}`)
+        .set('Authorization', `Bearer ${attackerToken}`)
+        .send({ name: 'Hackeado' });
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+
+      const unchanged = await User.findById(victim._id);
+      expect(unchanged.name).toBe('Usuario Víctima');
+    });
+  });
+
+  describe('DELETE /api/users/:id', () => {
+    it('permite eliminar el propio perfil', async () => {
+      const user = await User.create({
+        email: 'delete-self@test.com',
+        password: 'password123',
+        name: 'Usuario A Borrar',
+        role: 'buyer'
+      });
+
+      const token = generateToken(user._id.toString(), 'buyer');
+      const res = await request(app)
+        .delete(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it('rechaza eliminar el perfil de otro usuario (IDOR -> 403)', async () => {
+      const victim = await User.create({
+        email: 'victima-delete@test.com',
+        password: 'password123',
+        name: 'Usuario Víctima',
+        role: 'buyer'
+      });
+
+      const attackerToken = generateToken(new mongoose.Types.ObjectId().toString(), 'buyer');
+      const res = await request(app)
+        .delete(`/api/users/${victim._id}`)
+        .set('Authorization', `Bearer ${attackerToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+
+      const stillExists = await User.findById(victim._id);
+      expect(stillExists).not.toBeNull();
     });
   });
 });

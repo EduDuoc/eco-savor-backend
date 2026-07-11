@@ -38,7 +38,9 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(503).json(response.data);
     }
 
-    res.json(response.data);
+    // Reenviar el status code real de users-service (ej. 409 email duplicado,
+    // 400 datos inválidos), en vez de asumir 200 siempre
+    res.status(response.status).json(response.data);
   } catch (error) {
     // Circuito abierto - opossum lanza error
     if (error.circuitOpen || error.message?.includes('Breaker is open')) {
@@ -76,6 +78,13 @@ app.post('/api/auth/login', async (req, res) => {
     // Si el breaker devolvió fallback (circuito abierto o error)
     if (response.status === 503) {
       return res.status(503).json(response.data);
+    }
+
+    // Cualquier respuesta no exitosa de users-service (401 credenciales
+    // inválidas, 400 datos inválidos, etc.) se propaga tal cual al cliente.
+    // NUNCA se firma un JWT si el login no fue exitoso.
+    if (response.status < 200 || response.status >= 300) {
+      return res.status(response.status).json(response.data);
     }
 
     // Generar token JWT con los datos del usuario
@@ -281,12 +290,16 @@ app.get('/', (req, res) => {
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 API Gateway corriendo en http://localhost:${PORT}`);
-  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`   Users Service: ${SERVICES.users}`);
-  console.log(`   Catalog Service: ${SERVICES.catalog}`);
-  console.log(`   Orders Service: ${SERVICES.orders}`);
-  console.log(`   Circuit Breakers: ACTIVOS (users, catalog, orders)`);
-});
+// Iniciar servidor (solo si se ejecuta directamente, no al importarlo desde tests)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 API Gateway corriendo en http://localhost:${PORT}`);
+    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   Users Service: ${SERVICES.users}`);
+    console.log(`   Catalog Service: ${SERVICES.catalog}`);
+    console.log(`   Orders Service: ${SERVICES.orders}`);
+    console.log(`   Circuit Breakers: ACTIVOS (users, catalog, orders)`);
+  });
+}
+
+module.exports = app;

@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const Product = require('./src/models/productModel');
 const productRoutes = require('./src/routes/productRoutes');
 const connectDB = require('./src/config/database');
+const { authMiddleware } = require('./src/middlewares/auth');
 
 let mongoServer;
 const app = express();
@@ -53,6 +54,10 @@ app.use('/products', (req, res, next) => {
   }
   next();
 });
+
+// Middleware de autenticación REAL (igual que en index.js), para poder
+// reproducir el bug del whitelist de rutas públicas de /products/:id
+app.use(authMiddleware);
 
 app.use('/products', productRoutes);
 
@@ -260,6 +265,29 @@ describe('Catalog Microservice', () => {
 
       expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
+    });
+
+    it('rechaza crear un producto con precio no numérico (ej. "abc")', async () => {
+      const productData = {
+        name: 'Producto Precio Inválido',
+        description: 'Descripción',
+        price: 'abc',
+        discountPrice: 50,
+        quantity: 10,
+        category: 'comida caliente'
+      };
+
+      const token = generateToken('rest-123', 'restaurant');
+      const res = await request(app)
+        .post('/products')
+        .set('Authorization', `Bearer ${token}`)
+        .send(productData);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+
+      const products = await Product.find({ name: 'Producto Precio Inválido' });
+      expect(products).toHaveLength(0);
     });
   });
 
@@ -519,6 +547,32 @@ describe('Catalog Microservice', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.quantity).toBe(25);
+    });
+  });
+
+  describe('PUT /products/:id/restoreStock', () => {
+    it('restaura solo la cantidad de stock sin reactivar un producto deshabilitado manualmente', async () => {
+      const product = await Product.create({
+        name: 'Producto Deshabilitado Manualmente',
+        description: 'Descripción',
+        price: 100,
+        discountPrice: 80,
+        quantity: 5,
+        category: 'comida caliente',
+        restaurantId: 'rest-123',
+        restaurantName: 'Mi Restaurante',
+        available: false // el restaurante lo deshabilitó a propósito
+      });
+
+      const res = await request(app)
+        .put(`/products/${product._id}/restoreStock`)
+        .set('X-Internal-API-Key', 'ecosaver_internal_key_change_in_prod')
+        .send({ quantity: 3 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.quantity).toBe(8);
+      expect(res.body.data.available).toBe(false);
     });
   });
 });

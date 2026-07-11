@@ -6,6 +6,16 @@ const userService = require('../services/userService');
  */
 
 /**
+ * Verifica que el usuario autenticado sea el dueño del recurso solicitado
+ * (o tenga rol admin). Previene IDOR en GET/PUT/DELETE /api/users/:id
+ * @param {Object} req
+ * @returns {Boolean}
+ */
+const isOwnerOrAdmin = (req) => {
+  return !!req.user && (req.user.role === 'admin' || req.user.sub === req.params.id);
+};
+
+/**
  * Registrar usuario
  * POST /api/users/register
  */
@@ -95,6 +105,13 @@ exports.getRestaurants = async (req, res) => {
  */
 exports.getUserById = async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) {
+      return res.status(403).json({
+        success: false,
+        error: 'No tiene permisos para acceder a este recurso'
+      });
+    }
+
     const user = await userService.getUserById(req.params.id);
     
     res.json({
@@ -118,6 +135,13 @@ exports.getUserById = async (req, res) => {
  */
 exports.updateUser = async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) {
+      return res.status(403).json({
+        success: false,
+        error: 'No tiene permisos para modificar este recurso'
+      });
+    }
+
     const updatedUser = await userService.updateProfile(req.params.id, req.body);
     
     res.json({
@@ -142,6 +166,13 @@ exports.updateUser = async (req, res) => {
  */
 exports.deleteUser = async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) {
+      return res.status(403).json({
+        success: false,
+        error: 'No tiene permisos para eliminar este recurso'
+      });
+    }
+
     await userService.deleteUser(req.params.id);
     
     res.json({
