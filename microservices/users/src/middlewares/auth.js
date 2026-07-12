@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'ecosaver_dev_secret_change_in_prod
 // NOTA: '/' se compara con match exacto (no con startsWith), porque
 // req.path.startsWith('/') es true para CUALQUIER ruta y dejaría todo el
 // servicio sin autenticación.
-const PUBLIC_ROUTES = ['/api/users/register', '/api/users/login', '/api/users/restaurants'];
+const PUBLIC_ROUTES = ['/api/users/register', '/api/users/login', '/api/users/restaurants', '/api/feedback'];
 
 /**
  * Middleware de autenticación JWT para Users Service

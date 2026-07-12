@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./src/config/database');
 const userRoutes = require('./src/routes/userRoutes');
+const feedbackRoutes = require('./src/routes/feedbackRoutes');
 const { authMiddleware } = require('./src/middlewares/auth');
 const { notFoundHandler, errorHandler } = require('./src/middlewares/errorHandlers');
 
@@ -22,6 +23,7 @@ app.use(authMiddleware);
 
 // Rutas
 app.use('/api/users', userRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Health check
 app.get('/', (req, res) => {

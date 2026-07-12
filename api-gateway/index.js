@@ -139,6 +139,7 @@ app.use('/api/', expressjwt({
     '/api/auth/login', 
     '/api/auth/register',
     '/api/restaurants',
+    { url: '/api/feedback', method: 'POST' },
     '/api/catalog/products',
     { url: '/api/catalog/products/([a-zA-Z0-9]+)', method: 'GET' },
     { url: '/api/catalog/categories/([a-zA-Z0-9]+)/products', method: 'GET' },
@@ -247,6 +248,10 @@ app.post('/api/orders/:id/cancel', createProxyHandler(SERVICES.orders, '/api/ord
 // PROXY PARA RESTAURANTS — http-proxy-middleware (sin circuit breaker)
 // Alias público para listar restaurantes
 // ===========================================================================
+app.post('/api/feedback', createProxyHandler(SERVICES.users, '/api/feedback', { forwardAuth: false }));
+app.get('/api/feedback', createProxyHandler(SERVICES.users, '/api/feedback'));
+app.put('/api/feedback/:id/reviewed', createProxyHandler(SERVICES.users, '/api/feedback/:id/reviewed'));
+
 app.use('/api/restaurants', createProxyMiddleware({ 
   target: SERVICES.users, 
   changeOrigin: true,
