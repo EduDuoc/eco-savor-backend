@@ -324,7 +324,8 @@ exports.cancelOrder = async (req, res) => {
       });
     }
     
-    const cancelledOrder = await orderService.cancel(orderId);
+    const cancelledBy = req.user.role === 'restaurant' ? 'restaurant' : 'buyer';
+    const cancelledOrder = await orderService.cancel(orderId, cancelledBy);
 
     res.json({
       success: true,
@@ -388,6 +389,56 @@ exports.deleteOrder = async (req, res) => {
       return res.status(400).json({ success: false, error: error.message });
     }
     
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+};
+
+/**
+ * Obtener estadísticas de un cliente - Solo admin
+ * GET /api/orders/customers/:userId/stats
+ */
+exports.getCustomerStats = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Solo administradores pueden acceder a este recurso'
+      });
+    }
+
+    const stats = await orderService.getStatsByCustomer(req.params.userId);
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error al obtener estadísticas de cliente:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+};
+
+/**
+ * Obtener estadísticas de un restaurante - Solo admin
+ * GET /api/orders/restaurants/:restaurantId/stats
+ */
+exports.getRestaurantStats = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Solo administradores pueden acceder a este recurso'
+      });
+    }
+
+    const stats = await orderService.getStatsByRestaurant(req.params.restaurantId);
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    console.error('Error al obtener estadísticas:', error);
     res.status(500).json({ success: false, error: 'Error interno del servidor' });
   }
 };

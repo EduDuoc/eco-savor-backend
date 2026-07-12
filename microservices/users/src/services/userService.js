@@ -80,6 +80,14 @@ class UserService {
   }
 
   /**
+   * Obtener todos los usuarios (solo admin)
+   * @returns {Promise<Array>}
+   */
+  async getAllUsers() {
+    return await userRepository.findAllUsers();
+  }
+
+  /**
    * Obtener usuario por ID
    * @param {String} id 
    * @returns {Promise<Object>}

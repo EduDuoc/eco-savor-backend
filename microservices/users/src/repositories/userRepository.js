@@ -53,6 +53,14 @@ class UserRepository {
   }
 
   /**
+   * Obtener todos los usuarios (restaurantes y compradores)
+   * @returns {Promise<User[]>}
+   */
+  async findAllUsers() {
+    return await User.find({}).select('-password');
+  }
+
+  /**
    * Actualizar usuario
    * @param {String} id 
    * @param {Object} updateData 

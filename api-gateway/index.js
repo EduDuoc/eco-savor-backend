@@ -194,9 +194,7 @@ app.get('/api/catalog/my-products', createProxyHandler(SERVICES.catalog, '/produ
 app.use('/api/users', createProxyMiddleware({ 
   target: SERVICES.users, 
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/users': '',
-  },
+  pathRewrite: (path, req) => '/api/users' + path,
   onProxyReq: (proxyReq, req) => {
     if (req.auth) {
       proxyReq.setHeader('X-User-Id', req.auth.sub);
@@ -214,6 +212,12 @@ app.post('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders', { bre
 
 // GET /api/orders - Listar órdenes
 app.get('/api/orders', createProxyHandler(SERVICES.orders, '/api/orders', { breaker: ordersBreaker }));
+
+// GET /api/orders/restaurants/:restaurantId/stats - Estadísticas de un restaurante (solo admin)
+app.get('/api/orders/restaurants/:restaurantId/stats', createProxyHandler(SERVICES.orders, '/api/orders/restaurants/:restaurantId/stats', { breaker: ordersBreaker }));
+
+// GET /api/orders/customers/:userId/stats - Estadísticas de un cliente (solo admin)
+app.get('/api/orders/customers/:userId/stats', createProxyHandler(SERVICES.orders, '/api/orders/customers/:userId/stats', { breaker: ordersBreaker }));
 
 // GET /api/orders/:id - Obtener orden por ID
 app.get('/api/orders/:id', createProxyHandler(SERVICES.orders, '/api/orders/:id', { breaker: ordersBreaker }));
@@ -246,9 +250,7 @@ app.post('/api/orders/:id/cancel', createProxyHandler(SERVICES.orders, '/api/ord
 app.use('/api/restaurants', createProxyMiddleware({ 
   target: SERVICES.users, 
   changeOrigin: true,
-  pathRewrite: {
-    '^/api/restaurants': '/api/users/restaurants',
-  }
+  pathRewrite: () => '/api/users/restaurants',
 }));
 
 // ===========================================================================

@@ -42,6 +42,10 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'],
     default: 'pending'
   },
+  cancelledBy: {
+    type: String,
+    enum: ['buyer', 'restaurant']
+  },
   stockDeducted: {
     type: Boolean,
     default: false

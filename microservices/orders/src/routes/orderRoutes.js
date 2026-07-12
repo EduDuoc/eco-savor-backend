@@ -19,6 +19,12 @@ router.post('/',
 // READ - Listar órdenes (filtrado por rol en el controller)
 router.get('/', orderController.listOrders);
 
+// READ - Estadísticas de un restaurante (solo admin)
+router.get('/restaurants/:restaurantId/stats', orderController.getRestaurantStats);
+
+// READ - Estadísticas de un cliente (solo admin)
+router.get('/customers/:userId/stats', orderController.getCustomerStats);
+
 // READ - Obtener orden por ID
 router.get('/:id', orderController.getOrderById);
 

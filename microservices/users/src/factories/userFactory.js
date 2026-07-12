@@ -61,15 +61,16 @@ class UserFactory {
    * @throws {Error} Si el rol es inválido
    */
   create(data) {
-    if (!data.role || !['restaurant', 'buyer'].includes(data.role)) {
-      throw new Error('El rol debe ser "restaurant" o "buyer"');
+    if (!data.role || !['restaurant', 'buyer', 'admin'].includes(data.role)) {
+      throw new Error('El rol debe ser "restaurant", "buyer" o "admin"');
     }
-
     switch (data.role) {
       case 'restaurant':
         return this.createRestaurant(data);
       case 'buyer':
         return this.createBuyer(data);
+      case 'admin':
+        return this.createBaseUser(data);
       default:
         throw new Error('Rol no válido');
     }

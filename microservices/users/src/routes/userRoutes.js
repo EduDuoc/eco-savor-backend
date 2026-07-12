@@ -13,6 +13,7 @@ router.get('/restaurants', userController.getRestaurants);
  * Rutas protegidas (requieren autenticación)
  * Se implementará middleware de auth después
  */
+router.get('/', userController.getAllUsers);
 router.get('/:id', userController.getUserById);
 router.put('/:id', userController.updateUser);
 router.delete('/:id', userController.deleteUser);

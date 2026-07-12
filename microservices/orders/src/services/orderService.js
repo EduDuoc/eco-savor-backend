@@ -184,7 +184,7 @@ class OrderService {
    * Restaura stock SOLO si realmente fue descontado (stockDeducted === true).
    * No se puede cancelar una orden ya completada o ya cancelada.
    */
-  async cancel(id) {
+  async cancel(id, cancelledBy) {
     const order = await this.getById(id);
 
     if (order.status === 'completed' || order.status === 'cancelled') {
@@ -198,7 +198,7 @@ class OrderService {
       await stockService.restoreStock(order.items);
     }
 
-    const cancelledOrder = await orderRepository.cancel(id);
+    const cancelledOrder = await orderRepository.cancel(id, cancelledBy);
     if (!cancelledOrder) {
       throw new Error('Orden no encontrada');
     }
@@ -207,6 +207,20 @@ class OrderService {
     await notificationService.notifyStatusChange(cancelledOrder, 'cancelled');
 
     return cancelledOrder;
+  }
+
+  /**
+   * Obtener estadísticas de un restaurante (solo admin)
+   */
+  async getStatsByRestaurant(restaurantId) {
+    return await orderRepository.getStatsByRestaurant(restaurantId);
+  }
+
+  /**
+   * Obtener estadísticas de compra de un cliente (solo admin)
+   */
+  async getStatsByCustomer(userId) {
+    return await orderRepository.getStatsByCustomer(userId);
   }
 
   /**

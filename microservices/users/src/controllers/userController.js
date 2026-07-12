@@ -100,6 +100,32 @@ exports.getRestaurants = async (req, res) => {
 };
 
 /**
+ * Obtener todos los usuarios - Solo admin
+ * GET /api/users
+ */
+exports.getAllUsers = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Solo administradores pueden acceder a este recurso'
+      });
+    }
+
+    const users = await userService.getAllUsers();
+
+    res.json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+  } catch (error) {
+    console.error('Error al obtener usuarios:', error);
+    res.status(500).json({ success: false, error: 'Error interno del servidor' });
+  }
+};
+
+/**
  * Obtener usuario por ID
  * GET /api/users/:id
  */
