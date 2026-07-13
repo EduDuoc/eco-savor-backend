@@ -6,10 +6,10 @@ API Gateway (port 3000) + 3 microservices with separate MongoDB databases:
 
 | Service | Port | DB | Patterns |
 |---------|------|-----|----------|
-| api-gateway | 3000 | — | JWT auth, http-proxy-middleware |
+| api-gateway | 3000 | — | JWT auth, http-proxy-middleware, Circuit Breaker (opossum) |
 | users | 3001 | ecosaver_users | Repository, Factory Method |
-| catalog | 3002 | ecosaver_catalog | Repository |
-| orders | 3003 | ecosaver_orders | Repository, Strategy |
+| catalog | 3002 | ecosaver_catalog | Repository, Factory Method |
+| orders | 3003 | ecosaver_orders | Repository, Factory Method, Strategy (notification channels) |
 
 **Key constraint:** Controllers NEVER talk directly to models — always through repositories.
 
@@ -127,13 +127,16 @@ Each service has `.env` (local) and `.env.docker` (container):
 
 ## Testing
 
-Only `users` service has tests implemented:
+All services have real test suites (Jest + `mongodb-memory-server` + `supertest`), not placeholders:
 
 ```bash
-cd microservices/users && npm test
+cd microservices/users && npm test      # 15/15 passing, ~78% stmt coverage
+cd microservices/catalog && npm test    # 18/18 passing, ~72% stmt coverage
+cd microservices/orders && npm test     # 20/20 passing, ~68% stmt coverage
+cd api-gateway && npm test              # 18/18 passing, ~45% stmt coverage
 ```
 
-Uses Jest + `mongodb-memory-server` + `supertest`. Other services have `"test": "echo..."` placeholders.
+Run everything with the root script: `npm test` (from `eco-savor-backend/`) chains all four.
 
 ## Verification — Is the backend working?
 
@@ -213,3 +216,6 @@ docker compose logs -f
 8. **Frontend auth loop:** If frontend has infinite reload with "Token inválido", check if catalog endpoint requires auth (it shouldn't)
 9. **http-proxy-middleware body forwarding:** In Express 5, `http-proxy-middleware` doesn't forward request body correctly for POST/PUT. Use axios manually for catalog routes instead.
 10. **path-to-regexp patterns:** Express 5 uses path-to-regexp v8 which doesn't support `*` or `:param(*)` wildcards. Use explicit routes instead.
+11. **404/500 handlers:** each service (`catalog`, `orders`, `users`) has its own `src/middlewares/errorHandlers.js` exporting `notFoundHandler`/`errorHandler`, wired at the end of `index.js`. Duplicated per service on purpose (no cross-service shared package) — update all three if the response shape changes.
+12. **Internal API key check:** `catalog/src/controllers/productController.js` exposes `verifyInternalApiKey(req)`, used by `deductStock`/`restoreStock` to require the `x-internal-api-key` header (only Orders' `stockService.js` calls these with that header). Don't relax this check — it's the only thing stopping public callers from mutating stock directly.
+13. **connectDB() duplication is intentional-for-now:** `*/src/config/database.js` in all three services has near-identical Mongoose connection logic, commented as a known, accepted duplication (no shared workspace/package exists across services). Don't "fix" it by inventing a cross-service package without discussing it first — it was a deliberate scope decision.
